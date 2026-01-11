@@ -1,0 +1,33 @@
+flowchart LR
+  subgraph Clients
+    W[Web App]
+    M[Mobile App]
+    P[Partner API Client]
+  end
+
+  subgraph Edge
+    GW[API Gateway\nAuth • Routing • Rate Limits • Observability]
+    WAF[WAF / DDoS Protection]
+  end
+
+  subgraph Platform
+    U[Users Service]
+    O[Orders Service]
+    R[Recommendations Service]
+    I[Identity Provider\nOIDC / JWT Issuer]
+    OBS[Logging/Tracing/Metrics]
+  end
+
+  W --> WAF --> GW
+  M --> WAF --> GW
+  P --> WAF --> GW
+
+  GW --> U
+  GW --> O
+  GW --> R
+
+  GW <--> I
+  GW --> OBS
+  U --> OBS
+  O --> OBS
+  R --> OBS
