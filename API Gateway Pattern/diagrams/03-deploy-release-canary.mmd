@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph Clients
+    C[Clients]
+  end
+
+  subgraph Edge
+    GW[API Gateway]
+  end
+
+  subgraph Upstreams
+    V1[Orders v1]
+    V2[Orders v2 Canary]
+  end
+
+  C --> GW
+
+  GW -->|95% traffic| V1
+  GW -->|5% canary\n(header/tenant-based)| V2
+
+  subgraph Controls
+    M[Metrics/SLO gates\np95 latency • 5xx rate]
+    R[Rollback rule\nroute all to v1]
+  end
+
+  V1 --> M
+  V2 --> M
+  M -->|Fail| R
+  R --> GW
