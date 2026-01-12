@@ -1,0 +1,22 @@
+services:
+  gateway:
+    build: ./gateway
+    ports:
+      - "8080:8080"
+    environment:
+      USERS_URL: "http://users:3001"
+      ORDERS_URL: "http://orders:3002"
+      RATE_LIMIT_RPS: "5"
+    depends_on:
+      - users
+      - orders
+
+  users:
+    build: ./services/users
+    ports:
+      - "3001:3001"
+
+  orders:
+    build: ./services/orders
+    ports:
+      - "3002:3002"

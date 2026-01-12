@@ -1,0 +1,26 @@
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant GW as API Gateway
+  participant IDP as IdP (OIDC)
+  participant S as Upstream Service
+  participant OBS as Observability
+
+  C->>GW: HTTPS request + Bearer JWT
+  GW->>GW: Validate JWT (iss/aud/exp/signature)
+  alt JWT invalid
+    GW->>OBS: Log auth failure (401)
+    GW-->>C: 401 Unauthorized
+  else JWT valid
+    GW->>GW: Apply rate limit (tenant/client)
+    alt Rate limit exceeded
+      GW->>OBS: Log throttling (429)
+      GW-->>C: 429 Too Many Requests
+    else Allowed
+      GW->>GW: Add Request-ID + trace headers
+      GW->>S: Forward request to upstream
+      S-->>GW: Response
+      GW->>OBS: Access log + latency + status
+      GW-->>C: Response (normalized errors if needed)
+    end
+  end
