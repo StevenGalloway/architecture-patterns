@@ -1,0 +1,31 @@
+flowchart LR
+  subgraph Clients
+    M[Mobile App]
+    W[Web App]
+  end
+
+  subgraph Edge
+    GW[API Gateway\n(optional)]
+  end
+
+  subgraph BFFs
+    MBFF[Mobile BFF\nUI contract + composition]
+    WBFF[Web BFF\nUI contract + composition]
+  end
+
+  subgraph DomainServices
+    P[Profile Service]
+    C[Catalog Service]
+    R[Recommendations Service]
+  end
+
+  M --> GW --> MBFF
+  W --> GW --> WBFF
+
+  MBFF --> P
+  MBFF --> C
+  MBFF --> R
+
+  WBFF --> P
+  WBFF --> C
+  WBFF --> R
