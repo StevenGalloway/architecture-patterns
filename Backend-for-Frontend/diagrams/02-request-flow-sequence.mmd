@@ -1,0 +1,17 @@
+sequenceDiagram
+  autonumber
+  participant M as Mobile App
+  participant MB as Mobile BFF
+  participant P as Profile Service
+  participant C as Catalog Service
+  participant R as Recommendations Service
+
+  M->>MB: GET /mobile/home (JWT)
+  MB->>P: GET /profile
+  MB->>C: GET /featured
+  MB->>R: GET /recs?limit=5
+  alt Recs slow/unavailable
+    MB-->>M: 200 OK (partial)\nprofile + featured (fallback recs=[])
+  else Recs ok
+    MB-->>M: 200 OK (mobile-shaped payload)
+  end
