@@ -1,0 +1,26 @@
+flowchart TB
+  subgraph Clients
+    M1[Mobile v1]
+    M2[Mobile v2]
+  end
+
+  subgraph BFF
+    MBFF[Mobile BFF]
+    V1[/Contract v1\n/mobile/v1/home/]
+    V2[/Contract v2\n/mobile/v2/home/]
+  end
+
+  subgraph Domain
+    P[Profile]
+    C[Catalog]
+    R[Recs]
+  end
+
+  M1 --> V1 --> MBFF
+  M2 --> V2 --> MBFF
+
+  MBFF --> P
+  MBFF --> C
+  MBFF --> R
+
+  MBFF -->|Deprecate v1\nsunset date| V1

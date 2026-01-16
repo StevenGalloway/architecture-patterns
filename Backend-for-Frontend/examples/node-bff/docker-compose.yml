@@ -1,0 +1,41 @@
+services:
+  mobile-bff:
+    build: ./bff-mobile
+    ports:
+      - "8081:8081"
+    environment:
+      PROFILE_URL: "http://profile:3001"
+      CATALOG_URL: "http://catalog:3002"
+      RECS_URL: "http://recs:3003"
+    depends_on:
+      - profile
+      - catalog
+      - recs
+
+  web-bff:
+    build: ./bff-web
+    ports:
+      - "8082:8082"
+    environment:
+      PROFILE_URL: "http://profile:3001"
+      CATALOG_URL: "http://catalog:3002"
+      RECS_URL: "http://recs:3003"
+    depends_on:
+      - profile
+      - catalog
+      - recs
+
+  profile:
+    build: ./services/profile
+    ports:
+      - "3001:3001"
+
+  catalog:
+    build: ./services/catalog
+    ports:
+      - "3002:3002"
+
+  recs:
+    build: ./services/recommendations
+    ports:
+      - "3003:3003"
