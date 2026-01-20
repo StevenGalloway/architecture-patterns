@@ -1,0 +1,18 @@
+```mermaid
+flowchart LR
+  C[Client] --> ER[Edge Router\n(reverse proxy / gateway)]
+  ER -->|default| L[Legacy Monolith]
+  ER -->|/billing/*| N[New Billing Service]
+
+  subgraph Data
+    DBL[(Legacy DB)]
+    DBN[(New DB / Replicated Data)]
+  end
+
+  L --> DBL
+  N --> DBN
+
+  OBS[Observability\nlogs/metrics/traces] <---> ER
+  OBS <---> L
+  OBS <---> N
+```
