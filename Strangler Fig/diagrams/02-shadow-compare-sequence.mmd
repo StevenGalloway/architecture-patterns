@@ -1,0 +1,21 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant ER as Edge Router
+  participant L as Legacy Monolith
+  participant N as New Billing Service
+  participant D as Diff Logger/Comparator
+
+  C->>ER: POST /billing/pay
+  ER->>L: Forward (authoritative) request
+  par Shadow request
+    ER->>N: Send shadow request (no side effects)
+  end
+
+  L-->>ER: 200 OK (legacy response)
+  ER-->>C: 200 OK
+
+  N-->>ER: 200 OK (shadow response)
+  ER->>D: Compare legacy vs new output\n(log diffs/metrics)
+```
