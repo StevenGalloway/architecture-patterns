@@ -1,0 +1,22 @@
+services:
+  edge-router:
+    build: ./edge-router
+    ports:
+      - "8080:8080"
+    environment:
+      LEGACY_URL: "http://legacy:3001"
+      BILLING_URL: "http://billing:3002"
+      CANARY_PERCENT: "5"
+    depends_on:
+      - legacy
+      - billing
+
+  legacy:
+    build: ./legacy-monolith
+    ports:
+      - "3001:3001"
+
+  billing:
+    build: ./new-billing-service
+    ports:
+      - "3002:3002"

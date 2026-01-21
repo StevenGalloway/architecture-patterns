@@ -1,0 +1,16 @@
+```mermaid
+flowchart TB
+  C[Clients] --> ER[Edge Router]
+
+  ER -->|95%| L[Legacy Monolith]
+  ER -->|5% Canary\n(tenant/header/percent)| N[New Billing Service]
+
+  subgraph Gates
+    M[Metrics / SLO Gates\np95 latency • 5xx • diffs]
+    RB[Rollback Rule\nRoute all to legacy]
+  end
+
+  L --> M
+  N --> M
+  M -->|Fail| RB --> ER
+```
