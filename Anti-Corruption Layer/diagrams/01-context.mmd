@@ -1,0 +1,12 @@
+```mermaid
+flowchart LR
+  CD[Core Domain Service] --> ACL[ACL Adapter\nTranslate • Validate • Resilience]
+  ACL --> V[Vendor System API]
+
+  CD -->|canonical model| CDM[Internal Canonical Model]
+  ACL -->|vendor DTO| VDTO[Vendor DTO]
+
+  OBS[Observability\nlogs/metrics/traces] <---> CD
+  OBS <---> ACL
+  OBS <---> V
+```
