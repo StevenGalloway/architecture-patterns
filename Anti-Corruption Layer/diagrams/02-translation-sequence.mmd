@@ -1,0 +1,15 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant CD as Core Domain Service
+  participant ACL as ACL Adapter
+  participant V as Vendor API
+
+  CD->>ACL: GET /customers/{id}
+  ACL->>ACL: Validate request + enrich context
+  ACL->>V: GET /vendor/customer?id={id}
+  V-->>ACL: vendor payload (weird schema)
+  ACL->>ACL: Map VendorDTO -> CanonicalCustomer
+  ACL->>ACL: Normalize enums, dates, ids; validate required fields
+  ACL-->>CD: CanonicalCustomer JSON
+```
