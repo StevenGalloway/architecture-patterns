@@ -1,0 +1,24 @@
+services:
+  core:
+    build: ./core-domain-service
+    ports:
+      - "3000:3000"
+    environment:
+      ACL_URL: "http://acl:3001"
+    depends_on:
+      - acl
+
+  acl:
+    build: ./acl-adapter
+    ports:
+      - "3001:3001"
+    environment:
+      VENDOR_URL: "http://vendor:3002"
+      ACL_TIMEOUT_MS: "500"
+    depends_on:
+      - vendor
+
+  vendor:
+    build: ./vendor-system-mock
+    ports:
+      - "3002:3002"

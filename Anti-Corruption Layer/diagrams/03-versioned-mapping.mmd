@@ -1,0 +1,15 @@
+```mermaid
+flowchart TB
+  CD[Core Domain Service] --> ACL[ACL Adapter]
+
+  subgraph Mappings
+    V1[Mapping v1\nVendor schema v1]
+    V2[Mapping v2\nVendor schema v2]
+  end
+
+  ACL -->|detect vendor version\n(header/field presence)| V1
+  ACL -->|feature flag / rollout| V2
+
+  VEND[Vendor API] --> ACL
+  ACL --> OBS[Mapping metrics\nunknown fields • failures • diffs]
+```
