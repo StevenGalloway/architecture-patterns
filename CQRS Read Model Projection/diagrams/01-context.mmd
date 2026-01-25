@@ -1,0 +1,15 @@
+```mermaid
+flowchart LR
+  C[Client] --> CMD[Command Service]
+  C --> QRY[Query Service]
+
+  CMD --> WDB[(Write DB)]
+  CMD --> BUS[Event Bus]
+  BUS --> PROJ[Projector]
+  PROJ --> RDB[(Read DB / Read Models)]
+  QRY --> RDB
+
+  OBS[Observability\nlogs/metrics/traces] <---> CMD
+  OBS <---> PROJ
+  OBS <---> QRY
+```
