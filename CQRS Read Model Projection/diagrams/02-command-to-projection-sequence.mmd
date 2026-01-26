@@ -1,0 +1,25 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant CMD as Command Service
+  participant WDB as Write DB
+  participant BUS as Event Bus
+  participant PROJ as Projector
+  participant RDB as Read DB
+  participant QRY as Query Service
+
+  C->>CMD: POST /orders (command)
+  CMD->>CMD: Validate invariants
+  CMD->>WDB: Insert Order (transaction)
+  CMD->>BUS: Publish OrderCreated (event_id)
+  CMD-->>C: 202 Accepted (eventual consistency)
+
+  BUS-->>PROJ: Deliver OrderCreated
+  PROJ->>PROJ: Idempotency check (event_id)
+  PROJ->>RDB: Upsert read model row(s)
+
+  C->>QRY: GET /orders/{id}
+  QRY->>RDB: Read projection
+  QRY-->>C: 200 OK (may be stale until projection catches up)
+```
