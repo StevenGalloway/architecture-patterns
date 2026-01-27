@@ -1,0 +1,21 @@
+```mermaid
+flowchart TB
+  BUS[Event Bus / Log] --> PROJ1[Projector v1]
+  BUS --> PROJ2[Projector v2]
+
+  PROJ1 --> RDB1[(Read Model v1)]
+  PROJ2 --> RDB2[(Read Model v2)]
+
+  subgraph Ops
+    REPLAY[Replay Tooling\n(reset offset / rebuild)]
+    LAG[Projection Lag Metrics]
+  end
+
+  REPLAY --> PROJ2
+  PROJ1 --> LAG
+  PROJ2 --> LAG
+
+  QRY[Query Service] --> RDB1
+  QRY --> RDB2
+  QRY -->|feature flag| RDB2
+```
