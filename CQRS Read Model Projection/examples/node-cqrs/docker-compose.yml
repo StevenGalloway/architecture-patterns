@@ -1,0 +1,33 @@
+services:
+  bus:
+    build: ./event-bus-mock
+    ports:
+      - "4000:4000"
+
+  command:
+    build: ./command-service
+    ports:
+      - "3001:3001"
+    environment:
+      BUS_URL: "http://bus:4000"
+    depends_on:
+      - bus
+
+  projector:
+    build: ./projector
+    ports:
+      - "3002:3002"
+    environment:
+      BUS_URL: "http://bus:4000"
+      READ_STORE_URL: "http://projector:3002"
+    depends_on:
+      - bus
+
+  query:
+    build: ./query-service
+    ports:
+      - "3003:3003"
+    environment:
+      READ_STORE_URL: "http://projector:3002"
+    depends_on:
+      - projector
