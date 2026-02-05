@@ -1,0 +1,23 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant CMD as Command API
+  participant ES as Event Store
+  participant AGG as Aggregate (rehydrate)
+
+  C->>CMD: POST /accounts/{id}/deposit (amount, expected_version)
+  CMD->>ES: Load events for aggregate id
+  ES-->>CMD: Events + current_version
+  CMD->>AGG: Rehydrate by replaying events
+  AGG-->>CMD: Current state (balance, version)
+  CMD->>CMD: Validate invariants
+  CMD->>ES: Append MoneyDeposited with expected_version
+  alt version mismatch
+    ES-->>CMD: 409 Conflict (concurrency)
+    CMD-->>C: 409 Retry with latest version
+  else appended
+    ES-->>CMD: 202 Accepted (new_version)
+    CMD-->>C: 202 Accepted (event_id, new_version)
+  end
+```
