@@ -1,0 +1,33 @@
+services:
+  command-api:
+    build: ./command-api
+    ports:
+      - "8001:8001"
+    environment:
+      DATA_DIR: "/data"
+    volumes:
+      - es_data:/data
+
+  projector:
+    build: ./projector
+    environment:
+      DATA_DIR: "/data"
+      POLL_INTERVAL_MS: "200"
+    volumes:
+      - es_data:/data
+    depends_on:
+      - command-api
+
+  query-api:
+    build: ./query-api
+    ports:
+      - "8002:8002"
+    environment:
+      DATA_DIR: "/data"
+    volumes:
+      - es_data:/data
+    depends_on:
+      - projector
+
+volumes:
+  es_data:

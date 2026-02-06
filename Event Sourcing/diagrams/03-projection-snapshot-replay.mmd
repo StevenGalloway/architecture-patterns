@@ -1,0 +1,19 @@
+```mermaid
+flowchart TB
+  ES[(Event Store)] --> P[Projector]
+  P --> RM1[(Read Model v1)]
+  P --> SNAP[(Snapshots)]
+
+  subgraph Ops
+    REPLAY[Replay Tooling\nreset cursor]
+    CUT[Cutover\nfeature flag / config]
+    LAG[Projection Lag Metrics]
+  end
+
+  REPLAY --> P
+  P --> LAG
+
+  P2[Projector v2] --> RM2[(Read Model v2)]
+  ES --> P2
+  CUT --> RM2
+```
