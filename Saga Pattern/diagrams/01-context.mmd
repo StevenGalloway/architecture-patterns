@@ -1,0 +1,20 @@
+```mermaid
+flowchart LR
+  UI[Client / API] --> ORCH[Saga Orchestrator]
+  ORCH --> MQ[(RabbitMQ)]
+
+  MQ --> PAY[Payment Service]
+  MQ --> INV[Inventory Service]
+  MQ --> SHIP[Shipping Service]
+
+  PAY --> MQ
+  INV --> MQ
+  SHIP --> MQ
+
+  ORCH --> STORE[(Saga State Store\nBoltDB)]
+
+  OBS[Observability\nlogs/metrics/traces] <---> ORCH
+  OBS <---> PAY
+  OBS <---> INV
+  OBS <---> SHIP
+```
