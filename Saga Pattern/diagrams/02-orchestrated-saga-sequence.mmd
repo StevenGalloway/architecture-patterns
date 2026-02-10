@@ -1,0 +1,32 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant O as Orchestrator
+  participant MQ as RabbitMQ
+  participant P as Payment
+  participant I as Inventory
+  participant S as Shipping
+
+  C->>O: POST /orders (start saga)
+  O->>O: Persist saga state = STARTED
+  O->>MQ: Command: AuthorizePayment
+  MQ-->>P: AuthorizePayment
+  P-->>MQ: Event: PaymentAuthorized
+
+  MQ-->>O: PaymentAuthorized
+  O->>O: state = PAYMENT_OK
+  O->>MQ: Command: ReserveInventory
+  MQ-->>I: ReserveInventory
+  I-->>MQ: Event: InventoryReserved
+
+  MQ-->>O: InventoryReserved
+  O->>O: state = INVENTORY_OK
+  O->>MQ: Command: ArrangeShipping
+  MQ-->>S: ArrangeShipping
+  S-->>MQ: Event: ShippingArranged
+
+  MQ-->>O: ShippingArranged
+  O->>O: state = COMPLETED
+  O-->>C: 202 Accepted (saga completes async)
+```
