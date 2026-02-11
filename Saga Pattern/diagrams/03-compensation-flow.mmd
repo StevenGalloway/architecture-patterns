@@ -1,0 +1,19 @@
+```mermaid
+flowchart TB
+  FAIL[Failure at step N] --> ORCH[Saga Orchestrator]
+  ORCH -->|Compensate| C1[Cancel Shipping]
+  ORCH -->|Compensate| C2[Release Inventory]
+  ORCH -->|Compensate| C3[Refund/Void Payment]
+
+  C1 --> MQ[(RabbitMQ)]
+  C2 --> MQ
+  C3 --> MQ
+
+  MQ --> SHIP[Shipping Service]
+  MQ --> INV[Inventory Service]
+  MQ --> PAY[Payment Service]
+
+  PAY -->|Refunded| ORCH
+  INV -->|Released| ORCH
+  SHIP -->|Cancelled| ORCH
+```
