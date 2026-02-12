@@ -1,0 +1,43 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  orchestrator:
+    build: ./orchestrator
+    ports:
+      - "8080:8080"
+    environment:
+      AMQP_URL: "amqp://guest:guest@rabbitmq:5672/"
+      SAGA_DB_PATH: "/data/saga.db"
+    volumes:
+      - saga_data:/data
+    depends_on:
+      - rabbitmq
+
+  payment:
+    build: ./payment-service
+    environment:
+      AMQP_URL: "amqp://guest:guest@rabbitmq:5672/"
+    depends_on:
+      - rabbitmq
+
+  inventory:
+    build: ./inventory-service
+    environment:
+      AMQP_URL: "amqp://guest:guest@rabbitmq:5672/"
+      FAIL_INVENTORY: "false"
+    depends_on:
+      - rabbitmq
+
+  shipping:
+    build: ./shipping-service
+    environment:
+      AMQP_URL: "amqp://guest:guest@rabbitmq:5672/"
+    depends_on:
+      - rabbitmq
+
+volumes:
+  saga_data:
