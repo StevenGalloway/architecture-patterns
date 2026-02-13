@@ -1,0 +1,24 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as Client
+  participant S as Order Service
+  participant DB as Postgres
+  participant CDC as Debezium
+  participant K as Kafka
+  participant C as Consumer
+
+  U->>S: POST /orders
+  S->>DB: BEGIN
+  S->>DB: INSERT orders(...)
+  S->>DB: INSERT outbox_events(event_id,type,aggregate_id,payload,...)
+  S->>DB: COMMIT
+  S-->>U: 201 Created
+
+  DB-->>CDC: WAL change (outbox row)
+  CDC-->>K: Publish event to Kafka topic
+  K-->>C: Deliver event
+  C->>C: Idempotency check (event_id)
+  C->>C: Apply side effect
+  C-->>K: Commit offset
+```
