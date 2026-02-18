@@ -1,0 +1,11 @@
+```mermaid
+flowchart LR
+  P[Producer] --> MQ[(Message Broker\nRabbitMQ)]
+  MQ --> C[Consumer Service]
+  C --> D[(Dedup Store\nRedis / DB)]
+  C --> S[Side Effects\nDB / APIs / Email]
+
+  OBS[Observability\nmetrics/logs/traces] <---> C
+  OBS <---> MQ
+  OBS <---> D
+```
