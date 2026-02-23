@@ -1,0 +1,12 @@
+```mermaid
+flowchart TB
+  MQ[(Broker Queue)] --> C[Consumer]
+  C -->|transient failure| RETRY[Retry with backoff]
+  RETRY --> MQ
+
+  C -->|poison message| DLQ[(Dead Letter Queue)]
+  DLQ --> TRIAGE[Manual Triage\nfix + replay]
+
+  C --> MET[Metrics\nprocessed/dupes/failures/lag]
+  DLQ --> MET
+```
