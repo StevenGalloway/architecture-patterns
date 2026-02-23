@@ -1,0 +1,24 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant MQ as Broker
+  participant C as Consumer
+  participant R as Redis
+  participant X as Side Effect
+
+  MQ-->>C: Deliver message (message_id)
+  C->>R: SETNX processed:{message_id} = 1 (TTL)
+  alt already processed
+    R-->>C: 0 (exists)
+    C-->>MQ: ACK (skip)
+  else first time
+    R-->>C: 1 (created)
+    C->>X: Apply side effect (idempotent if possible)
+    alt success
+      C-->>MQ: ACK
+    else failure
+      C->>R: DEL processed:{message_id} (optional)
+      C-->>MQ: NACK / retry
+    end
+  end
+```
