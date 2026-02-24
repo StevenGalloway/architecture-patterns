@@ -1,0 +1,11 @@
+```mermaid
+flowchart LR
+  U[Client] --> A[Caller Service]
+  A -->|HTTP| B[Downstream Service\n(flaky/slow)]
+  A --> R[Retry + Backoff]
+  A --> CB[Circuit Breaker]
+  A --> TO[Timeouts]
+  A --> FB[Fallbacks]
+  OBS[Observability\nmetrics/logs/traces] <---> A
+  OBS <---> B
+```
