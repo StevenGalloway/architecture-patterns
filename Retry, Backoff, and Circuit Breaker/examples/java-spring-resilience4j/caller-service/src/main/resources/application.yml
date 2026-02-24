@@ -1,0 +1,54 @@
+server:
+  port: 9100
+
+spring:
+  application:
+    name: caller-service
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+downstream:
+  baseUrl: ${DOWNSTREAM_URL:http://localhost:9101}
+
+resilience4j:
+  retry:
+    instances:
+      downstreamRetry:
+        maxAttempts: 3
+        waitDuration: 200ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2.0
+        randomizedWaitFactor: 0.5
+        retryExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+
+  timelimiter:
+    instances:
+      downstreamTimeLimiter:
+        timeoutDuration: 700ms
+        cancelRunningFuture: true
+
+  circuitbreaker:
+    instances:
+      downstreamCB:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 10
+        failureRateThreshold: 50
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: 700ms
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 5
+        automaticTransitionFromOpenToHalfOpenEnabled: true
