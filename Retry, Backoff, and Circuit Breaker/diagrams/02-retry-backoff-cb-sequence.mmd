@@ -1,0 +1,29 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant A as Caller Service
+  participant CB as Circuit Breaker
+  participant D as Downstream
+
+  C->>A: GET /proxy/data
+  A->>CB: check state
+  alt CB OPEN
+    CB-->>A: fail-fast
+    A-->>C: 200 fallback (degraded)
+  else CB CLOSED/HALF_OPEN
+    loop up to N retries with backoff+jitter
+      A->>D: GET /data (timeout)
+      alt transient failure/timeout
+        D-->>A: 5xx/timeout
+        A->>A: wait backoff + jitter
+      else success
+        D-->>A: 200 OK
+        A-->>C: 200 OK
+      end
+    end
+    alt retries exhausted
+      A-->>C: 200 fallback (or 503)
+    end
+  end
+```
