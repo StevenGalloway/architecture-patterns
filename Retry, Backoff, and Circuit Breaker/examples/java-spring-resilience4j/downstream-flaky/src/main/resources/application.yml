@@ -1,0 +1,10 @@
+server:
+  port: 9101
+spring:
+  application:
+    name: downstream-flaky
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
