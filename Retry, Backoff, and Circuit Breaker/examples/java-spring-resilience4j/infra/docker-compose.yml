@@ -1,0 +1,14 @@
+services:
+  downstream:
+    build: ../downstream-flaky
+    ports:
+      - "9101:9101"
+
+  caller:
+    build: ../caller-service
+    environment:
+      DOWNSTREAM_URL: "http://downstream:9101"
+    ports:
+      - "9100:9100"
+    depends_on:
+      - downstream

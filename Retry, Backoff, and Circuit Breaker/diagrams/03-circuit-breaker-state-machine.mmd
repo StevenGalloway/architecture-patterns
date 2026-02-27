@@ -1,0 +1,8 @@
+```mermaid
+stateDiagram-v2
+  [*] --> CLOSED
+  CLOSED --> OPEN: failure/slow rate exceeds threshold
+  OPEN --> HALF_OPEN: waitDuration elapsed
+  HALF_OPEN --> CLOSED: trial calls succeed
+  HALF_OPEN --> OPEN: trial calls fail
+```
