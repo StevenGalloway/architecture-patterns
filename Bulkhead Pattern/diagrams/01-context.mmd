@@ -1,0 +1,9 @@
+```mermaid
+flowchart LR
+  U[Client] --> A[Caller Service]
+  A -->|fast calls| F[Fast Downstream]
+  A -->|slow calls| S[Slow Downstream]
+  A --> BF[Bulkhead\n(semaphore: fast)]
+  A --> BS[Bulkhead\n(semaphore: slow)]
+  OBS[Observability\nmetrics/logs/traces] <---> A
+```
