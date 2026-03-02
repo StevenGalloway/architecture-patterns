@@ -1,0 +1,26 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant A as Caller Service
+  participant BH as Bulkhead (permits)
+  participant D as Downstream
+
+  C->>A: GET /call/slow
+  A->>BH: try_acquire(slow permits)
+  alt permits available
+    BH-->>A: acquired
+    A->>D: request (timeout)
+    alt success
+      D-->>A: 200 OK
+      A-->>C: 200 OK
+    else failure/timeout
+      D-->>A: 5xx/timeout
+      A-->>C: fallback or 503
+    end
+    A->>BH: release permit
+  else saturated
+    BH-->>A: rejected
+    A-->>C: 429/503 fail-fast (capacity preserved)
+  end
+```
