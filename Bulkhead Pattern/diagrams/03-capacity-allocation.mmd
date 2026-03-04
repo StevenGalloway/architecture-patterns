@@ -1,0 +1,12 @@
+```mermaid
+flowchart TB
+  subgraph Caller_Service_Capacity
+    FAST[Fast bulkhead\npermits=50]
+    SLOW[Slow bulkhead\npermits=5]
+  end
+
+  FAST -->|protects| Critical[Critical endpoints\nremain responsive]
+  SLOW -->|contains blast radius| NonCritical[Non-critical\nslow dependency]
+
+  note1["If slow dependency saturates, only SLOW permits are exhausted; FAST capacity remains."]
+```
