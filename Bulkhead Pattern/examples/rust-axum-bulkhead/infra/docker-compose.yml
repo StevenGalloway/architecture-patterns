@@ -1,0 +1,24 @@
+services:
+  downstream-fast:
+    build: ../downstream-fast
+    ports:
+      - "9201:9201"
+
+  downstream-slow:
+    build: ../downstream-slow
+    ports:
+      - "9202:9202"
+
+  caller:
+    build: ../caller
+    environment:
+      FAST_URL: "http://downstream-fast:9201/fast"
+      SLOW_URL: "http://downstream-slow:9202/slow"
+      FAST_PERMITS: "50"
+      SLOW_PERMITS: "5"
+      DOWNSTREAM_TIMEOUT_MS: "700"
+    ports:
+      - "9200:9200"
+    depends_on:
+      - downstream-fast
+      - downstream-slow
