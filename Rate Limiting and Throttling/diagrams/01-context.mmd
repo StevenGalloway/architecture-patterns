@@ -1,0 +1,7 @@
+```mermaid
+flowchart LR
+  Client --> Edge[Edge Proxy / API Gateway\n(OpenResty)]
+  Edge --> Svc[Backend Service]
+  Edge <--> Redis[(Redis\nRate Limit State)]
+  OBS[Observability\nmetrics/logs] <---> Edge
+```
