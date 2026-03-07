@@ -1,0 +1,24 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  service:
+    build: ../service
+    ports:
+      - "9400:9400"
+
+  edge:
+    build: ../edge
+    environment:
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      IP_RATE_PER_SEC: "5"
+      IP_BURST: "10"
+      QUOTA_PER_DAY: "200"
+    ports:
+      - "9300:9300"
+    depends_on:
+      - redis
+      - service
