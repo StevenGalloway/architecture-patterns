@@ -1,0 +1,23 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant E as Edge (OpenResty)
+  participant R as Redis
+  participant S as Backend
+
+  C->>E: GET /api/data (api_key)
+  E->>E: Token bucket (per-IP) check
+  alt IP bucket exceeded
+    E-->>C: 429 + Retry-After
+  else IP allowed
+    E->>R: INCR api:{api_key}:{date} (quota)
+    alt quota exceeded
+      E-->>C: 429 + Retry-After + limit headers
+    else quota ok
+      E->>S: Proxy to backend
+      S-->>E: 200 OK
+      E-->>C: 200 OK + rate headers
+    end
+  end
+```
