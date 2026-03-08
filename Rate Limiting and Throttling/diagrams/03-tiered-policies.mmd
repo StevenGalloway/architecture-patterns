@@ -1,0 +1,17 @@
+```mermaid
+flowchart TB
+  subgraph Policies
+    Free[FREE\n60 req/min\n1k/day]
+    Pro[PRO\n300 req/min\n50k/day]
+    Ent[ENTERPRISE\n2k req/min\n500k/day]
+  end
+
+  Key[API Key] --> Tier[Plan lookup]
+  Tier --> Free
+  Tier --> Pro
+  Tier --> Ent
+
+  Free --> Enforcement[Edge enforces per-tier\nlimits + quotas]
+  Pro --> Enforcement
+  Ent --> Enforcement
+```
