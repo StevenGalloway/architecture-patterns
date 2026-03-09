@@ -1,0 +1,9 @@
+```mermaid
+flowchart LR
+  C[Client] --> API[API Service]
+  API <--> R[(Redis Cache)]
+  API --> DB[(Postgres Origin)]
+  OBS[Observability\nmetrics/logs/traces] <---> API
+  OBS <---> R
+  OBS <---> DB
+```
