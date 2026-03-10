@@ -1,0 +1,34 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as Client
+  participant A as API
+  participant R as Redis
+  participant DB as Postgres
+
+  U->>A: GET /products/123
+  A->>R: GET cache:product:123
+  alt cache hit (fresh)
+    R-->>A: value
+    A-->>U: 200 (fast)
+  else cache miss/expired
+    A->>R: SETNX lock:product:123 (short TTL)
+    alt acquired lock
+      A->>DB: SELECT product
+      DB-->>A: row
+      A->>R: SET fresh + SET stale (longer TTL)
+      A->>R: DEL lock
+      A-->>U: 200
+    else lock held
+      A->>R: GET cache:product:123:stale
+      alt stale available (SWR)
+        R-->>A: stale value
+        A-->>U: 200 (stale)
+      else no stale
+        A->>DB: SELECT product (bounded timeout)
+        DB-->>A: row
+        A-->>U: 200
+      end
+    end
+  end
+```
