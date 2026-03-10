@@ -1,0 +1,38 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api:
+    build: ../app
+    environment:
+      APP_ENV: "dev"
+      TENANT: "public"
+      KEY_VERSION: "v1"
+      REDIS_URL: "redis://redis:6379/0"
+      DB_DSN: "postgresql://postgres:postgres@db:5432/appdb"
+      FRESH_TTL_SECONDS: "10"
+      STALE_TTL_SECONDS: "60"
+      NEGATIVE_TTL_SECONDS: "5"
+      LOCK_TTL_SECONDS: "3"
+    ports:
+      - "9500:9500"
+    depends_on:
+      - redis
+      - db
+
+volumes:
+  pgdata:
