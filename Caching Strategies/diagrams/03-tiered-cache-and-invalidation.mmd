@@ -1,0 +1,11 @@
+```mermaid
+flowchart TB
+  U[Clients] --> L1[L1 In-Memory]
+  L1 -->|miss| L2[(L2 Redis)]
+  L2 -->|miss| ORIGIN[(Origin DB)]
+  ORIGIN --> L2
+  L2 --> L1
+
+  EVT[Event Bus\n(pub/sub or outbox/CDC)] -->|invalidate keys| L2
+  L2 -->|optional broadcast| L1
+```
