@@ -1,0 +1,12 @@
+```mermaid
+flowchart LR
+  Client --> LB[Load Balancer]
+  LB --> A[API Instance A\n(L1 cache)]
+  LB --> B[API Instance B\n(L1 cache)]
+  A <--> R[(Redis L2 Cache)]
+  B <--> R
+  A --> DB[(Postgres Origin)]
+  B --> DB
+  A <--> NATS[(NATS Pub/Sub)]
+  B <--> NATS
+```
