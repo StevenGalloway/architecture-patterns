@@ -1,0 +1,67 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"
+      - "8222:8222"   # monitoring
+    command: ["-js", "-m", "8222"]
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api-a:
+    build: ../app
+    environment:
+      INSTANCE_NAME: "api-a"
+      PORT: "9600"
+      APP_ENV: "dev"
+      TENANT: "public"
+      KEY_VERSION: "v1"
+      REDIS_URL: "redis://redis:6379/0"
+      NATS_URL: "nats://nats:4222"
+      DB_DSN: "postgresql://postgres:postgres@db:5432/appdb"
+      L1_TTL_MS: "2000"
+      L2_TTL_SECONDS: "30"
+    ports:
+      - "9600:9600"
+    depends_on:
+      - redis
+      - nats
+      - db
+
+  api-b:
+    build: ../app
+    environment:
+      INSTANCE_NAME: "api-b"
+      PORT: "9601"
+      APP_ENV: "dev"
+      TENANT: "public"
+      KEY_VERSION: "v1"
+      REDIS_URL: "redis://redis:6379/0"
+      NATS_URL: "nats://nats:4222"
+      DB_DSN: "postgresql://postgres:postgres@db:5432/appdb"
+      L1_TTL_MS: "2000"
+      L2_TTL_SECONDS: "30"
+    ports:
+      - "9601:9601"
+    depends_on:
+      - redis
+      - nats
+      - db
+
+volumes:
+  pgdata:

@@ -1,0 +1,26 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant A as API A
+  participant DB as Postgres
+  participant N as NATS
+  participant R as Redis
+  participant B as API B
+
+  C->>A: PUT /items/1 (new value)
+  A->>DB: UPDATE items SET ...
+  DB-->>A: OK
+  A->>N: PUBLISH cache.invalidate {keys:[k1]}
+  par Evict on A
+    A->>A: Evict L1(k1)
+    A->>R: DEL k1
+  and Evict on B via event
+    N-->>B: cache.invalidate {keys:[k1]}
+    B->>B: Evict L1(k1)
+    B->>R: DEL k1
+  end
+  A-->>C: 200 OK
+
+  Note over C,B: Subsequent GETs on either instance miss cache and load fresh from DB.
+```
