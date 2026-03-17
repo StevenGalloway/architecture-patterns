@@ -1,0 +1,17 @@
+```mermaid
+flowchart TB
+  subgraph Cache_Tiers
+    L1[L1 In-Memory\nTTL=2s]
+    L2[(L2 Redis\nTTL=30s)]
+  end
+
+  ORIGIN[(Origin DB)] --> L2 --> L1
+
+  INV[Invalidation Event\n(keys or namespace)] --> L1
+  INV --> L2
+
+  VK[Versioned Keys\n(v1/v2)] --> L2
+  VK --> L1
+
+  note1["TTL is a safety net; invalidation provides freshness; versioning helps during schema/deploy changes."]
+```
