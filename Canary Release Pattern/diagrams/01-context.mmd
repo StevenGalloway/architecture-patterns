@@ -1,0 +1,10 @@
+```mermaid
+flowchart LR
+  U[Users] --> Ingress[Ingress / Gateway\ntraffic split]
+  Ingress --> Stable[Stable ReplicaSet\nv1]
+  Ingress --> Canary[Canary ReplicaSet\nv2]
+  RO[Argo Rollouts\ncontroller] --> Ingress
+  RO --> Analysis[Analysis Template\n(SLO gates)]
+  OBS[Metrics/Logs/Traces] <---> Stable
+  OBS <---> Canary
+```
