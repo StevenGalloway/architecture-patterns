@@ -1,0 +1,18 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant R as Argo Rollouts
+  participant I as Ingress
+  participant C as Canary Pods
+  participant O as Observability/Metric Provider
+
+  R->>I: set canary weight (5%)
+  R->>O: run analysis step
+  O-->>R: error_rate=0.01, p95=120ms
+  alt within thresholds
+    R->>I: increase weight (20%)
+  else exceeds thresholds
+    R->>I: set weight 0% (abort)
+    R->>R: rollback to stable
+  end
+```
