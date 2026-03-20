@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: canary-demo
+  namespace: canary-demo
+spec:
+  replicas: 4
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: canary-demo
+  template:
+    metadata:
+      labels:
+        app: canary-demo
+    spec:
+      containers:
+        - name: canary-demo
+          image: canary-demo:v2
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+  strategy:
+    canary:
+      stableService: canary-demo-stable
+      canaryService: canary-demo-canary
+      trafficRouting:
+        nginx:
+          stableIngress: canary-demo
+      steps:
+        - setWeight: 5
+        - analysis:
+            templates:
+              - templateName: canary-error-rate-check
+        - setWeight: 20
+        - analysis:
+            templates:
+              - templateName: canary-error-rate-check
+        - setWeight: 50
+        - analysis:
+            templates:
+              - templateName: canary-error-rate-check

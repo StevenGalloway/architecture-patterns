@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-error-rate-check
+  namespace: canary-demo
+spec:
+  metrics:
+    - name: error-rate
+      interval: 20s
+      count: 3
+      failureLimit: 1
+      provider:
+        web:
+          url: "http://canary-demo-canary.canary-demo.svc.cluster.local/rollout-metric"
+          timeoutSeconds: 5
+          jsonPath: "{$.error_rate}"
+      successCondition: "result < 0.02"
