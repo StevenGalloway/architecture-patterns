@@ -1,0 +1,13 @@
+```mermaid
+flowchart LR
+  U[Users] --> Ingress[Ingress / Gateway]
+  Ingress --> FE[frontend service]
+  FE --> BE[backend service]
+  subgraph Service Mesh
+    FE --- FEp[sidecar proxy]
+    BE --- BEp[sidecar proxy]
+    FEp -->|mTLS| BEp
+  end
+  OBS[Mesh Observability\nmetrics/traces/topology] <---> FEp
+  OBS <---> BEp
+```
