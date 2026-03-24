@@ -1,0 +1,16 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant F as frontend app
+  participant FP as frontend sidecar
+  participant BP as backend sidecar
+  participant B as backend app
+
+  F->>FP: HTTP request to backend DNS
+  FP->>FP: policy (timeouts/retries) + load balance
+  FP->>BP: mTLS connection + request
+  BP->>B: forward over localhost
+  B-->>BP: response
+  BP-->>FP: response
+  FP-->>F: response
+```
