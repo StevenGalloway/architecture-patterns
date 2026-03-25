@@ -1,0 +1,11 @@
+```mermaid
+flowchart TB
+  FE[frontend] --> TS[TrafficSplit backend]
+  TS -->|90%| V1[backend-v1]
+  TS -->|10%| V2[backend-v2]
+
+  MET[Metrics\nRPS/Errors/Latency] --> FE
+  MET --> V1
+  MET --> V2
+  GRAPH[Topology Graph] --> TS
+```
