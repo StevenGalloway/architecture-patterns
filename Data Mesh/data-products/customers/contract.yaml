@@ -1,0 +1,29 @@
+name: customers
+domain: commerce
+owner:
+  team: customers-domain
+  slack: "#data-customers"
+  email: "customers-data@example.com"
+version: "1.0.0"
+slo:
+  freshness_minutes: 60
+  availability_percent: 99.5
+entities:
+  - name: customers_curated
+    schema:
+      - name: customer_id
+        type: string
+        description: Customer identifier
+        classification: INTERNAL
+      - name: email
+        type: string
+        description: Customer email address
+        classification: PII
+      - name: created_ts
+        type: timestamp
+        description: Customer created timestamp (UTC)
+        classification: INTERNAL
+      - name: country
+        type: string
+        description: ISO country code
+        classification: INTERNAL
