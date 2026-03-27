@@ -1,0 +1,27 @@
+```mermaid
+flowchart LR
+  subgraph Domains
+    O[Orders Domain\nOwns Orders Product]
+    C[Customers Domain\nOwns Customers Product]
+  end
+
+  subgraph Platform
+    P[Self-Serve Data Platform\n(storage, orchestration, metadata, policy)]
+    G[Federated Governance\n(standards + policy-as-code)]
+  end
+
+  O -->|publishes| P
+  C -->|publishes| P
+  G -->|enforces standards| O
+  G -->|enforces standards| C
+
+  subgraph Consumers
+    BI[BI / Analysts]
+    DS[Data Science]
+    APPS[Operational Apps]
+  end
+
+  P --> BI
+  P --> DS
+  P --> APPS
+```
