@@ -1,0 +1,33 @@
+name: orders
+domain: commerce
+owner:
+  team: orders-domain
+  slack: "#data-orders"
+  email: "orders-data@example.com"
+version: "1.0.0"
+slo:
+  freshness_minutes: 30
+  availability_percent: 99.5
+entities:
+  - name: orders_curated
+    schema:
+      - name: order_id
+        type: string
+        description: Unique order identifier
+        classification: INTERNAL
+      - name: customer_id
+        type: string
+        description: Customer identifier (foreign key)
+        classification: INTERNAL
+      - name: order_ts
+        type: timestamp
+        description: Order timestamp (UTC)
+        classification: INTERNAL
+      - name: order_total_usd
+        type: decimal(12,2)
+        description: Total order value in USD
+        classification: INTERNAL
+      - name: status
+        type: string
+        description: Order status (PLACED, SHIPPED, CANCELLED, COMPLETED)
+        classification: INTERNAL
