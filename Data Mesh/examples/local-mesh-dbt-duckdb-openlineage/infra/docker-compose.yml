@@ -1,0 +1,50 @@
+services:
+  marquez:
+    image: marquezproject/marquez:0.50.0
+    ports:
+      - "5000:5000"
+    environment:
+      MARQUEZ_PORT: "5000"
+
+  marquez-web:
+    image: marquezproject/marquez-web:0.50.0
+    ports:
+      - "3000:3000"
+    environment:
+      MARQUEZ_HOST: "marquez"
+      MARQUEZ_PORT: "5000"
+    depends_on:
+      - marquez
+
+  dbt-orders:
+    build:
+      context: ../platform
+      dockerfile: Dockerfile.dbt
+    volumes:
+      - ../platform/profiles.yml:/profiles/profiles.yml:ro
+      - ../products/orders:/work:rw
+      - data:/data
+    environment:
+      OPENLINEAGE_URL: "http://marquez:5000"
+      OPENLINEAGE_NAMESPACE: "local-mesh"
+      OPENLINEAGE_RUN_ID: ""
+    depends_on:
+      - marquez
+
+  dbt-customers:
+    build:
+      context: ../platform
+      dockerfile: Dockerfile.dbt
+    volumes:
+      - ../platform/profiles.yml:/profiles/profiles.yml:ro
+      - ../products/customers:/work:rw
+      - data:/data
+    environment:
+      OPENLINEAGE_URL: "http://marquez:5000"
+      OPENLINEAGE_NAMESPACE: "local-mesh"
+      OPENLINEAGE_RUN_ID: ""
+    depends_on:
+      - marquez
+
+volumes:
+  data:
