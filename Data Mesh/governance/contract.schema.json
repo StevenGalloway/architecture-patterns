@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Data Product Contract",
+  "type": "object",
+  "required": [
+    "name",
+    "domain",
+    "owner",
+    "version",
+    "slo",
+    "entities"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "object",
+      "required": [
+        "team",
+        "slack",
+        "email"
+      ],
+      "properties": {
+        "team": {
+          "type": "string"
+        },
+        "slack": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        }
+      }
+    },
+    "version": {
+      "type": "string"
+    },
+    "slo": {
+      "type": "object",
+      "required": [
+        "freshness_minutes",
+        "availability_percent"
+      ],
+      "properties": {
+        "freshness_minutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "availability_percent": {
+          "type": "number",
+          "minimum": 90,
+          "maximum": 100
+        }
+      }
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "schema"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "type",
+                "description",
+                "classification"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "classification": {
+                  "type": "string",
+                  "enum": [
+                    "PUBLIC",
+                    "INTERNAL",
+                    "CONFIDENTIAL",
+                    "PII"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
