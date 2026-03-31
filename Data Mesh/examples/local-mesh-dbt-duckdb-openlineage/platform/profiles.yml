@@ -1,0 +1,15 @@
+orders:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: /data/mesh.duckdb
+      threads: 4
+
+customers:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: /data/mesh.duckdb
+      threads: 4
