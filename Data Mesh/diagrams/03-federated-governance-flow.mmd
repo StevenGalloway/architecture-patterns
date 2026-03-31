@@ -1,0 +1,18 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant D as Domain Team PR
+  participant CI as CI/CD
+  participant GOV as Governance Rules
+  participant CAT as Catalog/Metadata
+  participant PLAT as Platform
+
+  D->>CI: Submit data product change (contract + models)
+  CI->>GOV: Validate contract, PII tags, naming, tests
+  alt passes
+    CI->>PLAT: Deploy pipeline + publish artifacts
+    PLAT->>CAT: Register dataset + lineage + owner
+  else fails
+    CI-->>D: Block merge with actionable errors
+  end
+```
