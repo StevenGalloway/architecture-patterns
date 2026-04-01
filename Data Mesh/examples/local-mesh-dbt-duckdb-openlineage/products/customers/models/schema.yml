@@ -1,0 +1,10 @@
+version: 2
+
+models:
+  - name: customers_curated
+    description: Curated customers table (domain-owned data product)
+    columns:
+      - name: customer_id
+        tests: [unique, not_null]
+      - name: email
+        tests: [not_null]

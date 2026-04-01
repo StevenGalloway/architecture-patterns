@@ -1,0 +1,13 @@
+name: orders
+version: "1.0.0"
+config-version: 2
+
+profile: orders
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+
+models:
+  orders:
+    +materialized: table
