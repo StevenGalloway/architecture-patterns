@@ -1,0 +1,17 @@
+```mermaid
+flowchart LR
+  subgraph Lambda_Architecture
+    E1[Events] --> B[Batch Layer\n(Hadoop/Spark batch)]
+    E1 --> S[Speed Layer\n(Flink/Storm/Streaming)]
+    B --> SV[Serving Views]
+    S --> SV
+    SV --> Q1[Queries/Dashboards]
+  end
+
+  subgraph Kappa_Architecture
+    E2[Events (Immutable Log)] --> SP[Stream Processing\n(Flink/Spark SS/Beam)]
+    SP --> DL[Lakehouse\n(Iceberg/Delta/Hudi)]
+    DL --> Q2[Queries/Dashboards]
+    E2 -. replay .-> SP
+  end
+```

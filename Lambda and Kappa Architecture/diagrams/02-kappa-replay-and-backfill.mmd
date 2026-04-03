@@ -1,0 +1,19 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant P as Producers
+  participant K as Kafka (Event Log)
+  participant F as Flink Job
+  participant L as Iceberg Tables
+  participant Q as Trino/BI
+
+  P->>K: publish events
+  F->>K: consume events (stream)
+  F->>L: write aggregates (streaming upserts/append)
+  Q->>L: query current state
+
+  Note over K,F: Logic change or bug fix
+  F->>F: deploy new job version
+  F->>K: replay from earlier offset / time
+  F->>L: recompute and overwrite/merge results
+```
