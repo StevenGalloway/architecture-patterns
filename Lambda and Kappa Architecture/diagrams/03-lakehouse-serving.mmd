@@ -1,0 +1,8 @@
+```mermaid
+flowchart TB
+  K[Kafka Topics] --> F[Flink SQL\nstreaming transforms]
+  F --> I[(Iceberg Tables\nbronze/silver/gold)]
+  I --> T[Trino\nSQL/BI Serving]
+  O[Observability\nlag/checkpoints/late data] --> F
+  O --> T
+```
