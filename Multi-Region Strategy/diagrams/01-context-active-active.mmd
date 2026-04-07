@@ -1,0 +1,19 @@
+```mermaid
+flowchart LR
+  U[Users] --> DNS[Global DNS\n(Route 53 Latency/Weighted)]
+  DNS --> R1[Region A\nALB + Compute]
+  DNS --> R2[Region B\nALB + Compute]
+
+  subgraph Region A
+    AALB[ALB] --> AECS[ECS/Fargate Service]
+  end
+
+  subgraph Region B
+    BALB[ALB] --> BECS[ECS/Fargate Service]
+  end
+
+  AECS --> DDB[(DynamoDB Global Table)]
+  BECS --> DDB
+  AECS --> OBSA[CloudWatch\nLogs/Metrics]
+  BECS --> OBSB[CloudWatch\nLogs/Metrics]
+```
