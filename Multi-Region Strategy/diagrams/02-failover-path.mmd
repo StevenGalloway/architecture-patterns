@@ -1,0 +1,21 @@
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant D as Route53/DNS
+  participant A as Region A (ALB/Service)
+  participant B as Region B (ALB/Service)
+  participant H as Health Checks
+
+  U->>D: Resolve service.example.com
+  D-->>U: Region A endpoint (lowest latency + healthy)
+  U->>A: Request
+  A-->>U: Response
+
+  Note over A,H: Region A outage occurs
+  H->>D: Mark Region A unhealthy
+  U->>D: Resolve again (TTL)
+  D-->>U: Region B endpoint
+  U->>B: Request
+  B-->>U: Response
+```
