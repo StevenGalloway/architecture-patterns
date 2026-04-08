@@ -1,0 +1,17 @@
+```mermaid
+flowchart TB
+  subgraph Multi_Active
+    D1[DynamoDB Global Tables\n(active/active writes)]
+    K1[Kafka/Pulsar with geo-replication\n(depends)]
+  end
+
+  subgraph Primary_Replica
+    A1[Aurora Global Database\n(primary + cross-region read replicas)]
+    P1[Postgres logical replication\ncareful failover]
+  end
+
+  subgraph Stateless_First
+    S1[Externalize state\n(token/session store, object store)]
+    C1[Cache per region\nwith TTL + invalidation strategy]
+  end
+```
