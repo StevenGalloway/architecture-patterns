@@ -1,0 +1,19 @@
+```mermaid
+flowchart LR
+  DEV[Engineer / On-Call] --> MGMT[Flag Management API\nExpress + Redis]
+  MGMT --> AUDIT[(Audit Log)]
+  MGMT -->|SSE push on change| SDK1[FlagSDK\nService Instance A]
+  MGMT -->|SSE push on change| SDK2[FlagSDK\nService Instance B]
+  MGMT -->|SSE push on change| SDK3[FlagSDK\nService Instance C]
+
+  SDK1 --> CACHE1[(In-Process Cache)]
+  SDK2 --> CACHE2[(In-Process Cache)]
+  SDK3 --> CACHE3[(In-Process Cache)]
+
+  REQ1[Incoming Request\nuser context] --> SDK1
+  REQ2[Incoming Request\nuser context] --> SDK2
+
+  SDK1 -->|evaluation event| OBS[Observability\nmetrics / structured logs]
+  SDK2 -->|evaluation event| OBS
+  SDK3 -->|evaluation event| OBS
+```
