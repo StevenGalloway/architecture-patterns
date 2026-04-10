@@ -1,0 +1,20 @@
+{
+  "name": "node-flagd-style",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start:mgmt": "node dist/management-api.js",
+    "start:app": "node dist/demo-app.js"
+  },
+  "dependencies": {
+    "eventsource": "^3.0.2",
+    "express": "^4.21.2",
+    "redis": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.3"
+  }
+}
