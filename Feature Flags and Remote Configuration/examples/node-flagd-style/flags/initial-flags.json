@@ -1,0 +1,34 @@
+[
+  {
+    "key": "checkout-v2",
+    "type": "release",
+    "valueType": "boolean",
+    "defaultValue": false,
+    "safeDefault": false,
+    "rules": [
+      { "type": "percentage", "percentage": 10, "value": true }
+    ],
+    "owner": "checkout-team",
+    "expiresAt": "2026-05-08"
+  },
+  {
+    "key": "max-upload-size-mb",
+    "type": "ops",
+    "valueType": "number",
+    "defaultValue": 10,
+    "safeDefault": 10,
+    "rules": [],
+    "owner": "platform-team",
+    "expiresAt": null
+  },
+  {
+    "key": "new-search-algorithm",
+    "type": "ops",
+    "valueType": "boolean",
+    "defaultValue": true,
+    "safeDefault": false,
+    "rules": [],
+    "owner": "search-team",
+    "expiresAt": null
+  }
+]
