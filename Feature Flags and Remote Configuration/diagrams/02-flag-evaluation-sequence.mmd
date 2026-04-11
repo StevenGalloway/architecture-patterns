@@ -1,0 +1,35 @@
+```mermaid
+sequenceDiagram
+  participant App as AppService
+  participant SDK as FlagSDK (in-process)
+  participant MGMT as ManagementAPI
+  participant Redis as Redis
+
+  Note over App,Redis: Startup — seed local cache
+  App->>SDK: initialize()
+  SDK->>MGMT: GET /flags (all flags)
+  MGMT->>Redis: HGETALL flags
+  Redis-->>MGMT: flag definitions
+  MGMT-->>SDK: flag payload
+  SDK->>SDK: seed in-process cache
+  SDK->>MGMT: open SSE /flags/stream
+  MGMT-->>SDK: SSE connection established
+
+  Note over App,Redis: Request — local evaluation (no network)
+  App->>SDK: evaluate("checkout-v2", { userId, tenantId })
+  SDK->>SDK: look up flag in local cache
+  SDK->>SDK: evaluate targeting rules in priority order
+  SDK-->>App: { variant: "enabled", ruleMatched: "percentage-10" }
+
+  Note over App,Redis: Background — flag update pushed
+  MGMT->>Redis: SET flag:checkout-v2 { percentage: 50 }
+  MGMT->>Redis: APPEND audit_log entry
+  MGMT-->>SDK: SSE event: flag:checkout-v2 updated
+  SDK->>SDK: update in-process cache entry
+
+  Note over App,Redis: Kill switch — on-call disables flag
+  App->>MGMT: PUT /flags/new-search-algorithm { defaultValue: false }
+  MGMT->>Redis: SET flag:new-search-algorithm { defaultValue: false }
+  MGMT-->>SDK: SSE event: flag:new-search-algorithm updated
+  SDK->>SDK: cache updated — all subsequent evaluations return false
+```
