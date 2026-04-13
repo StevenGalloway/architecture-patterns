@@ -1,0 +1,21 @@
+```mermaid
+flowchart TD
+  CREATE[Flag Created\nexpiresAt set\nowner assigned] --> DARK[Dark Launch\n0% exposure]
+  DARK --> CANARY[Canary\n1-5% exposure]
+  CANARY --> CHECK1{Health gates\npassing?}
+  CHECK1 -->|Yes| RAMP[Gradual Ramp\n10% → 50% → 100%]
+  CHECK1 -->|No| ROLLBACK1[Rollback to 0%\nInvestigate]
+  RAMP --> CHECK2{All metrics\nnormal?}
+  CHECK2 -->|Yes| FULL[Full Release\n100%]
+  CHECK2 -->|No| ROLLBACK2[Reduce exposure\nInvestigate]
+  FULL --> CLEANUP[Schedule Cleanup\nbefore expiresAt]
+  CLEANUP --> REMOVE[Remove flag from code\nArchive flag definition]
+
+  subgraph KillSwitch [Kill Switch Path]
+    ALERT[Alert fires\nincident declared] --> DISABLE[On-call disables flag\nvia Management API]
+    DISABLE --> SSE_PUSH[SSE pushed to all instances\n< 5s SLO]
+    SSE_PUSH --> REVERT[Feature disabled\nfor all users]
+    REVERT --> POSTMORTEM[Post-mortem\nfix root cause]
+    POSTMORTEM --> REENABLE[Re-enable when safe\nor remove flag permanently]
+  end
+```
