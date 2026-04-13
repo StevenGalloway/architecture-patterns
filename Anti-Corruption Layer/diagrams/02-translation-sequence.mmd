@@ -1,4 +1,3 @@
-```mermaid
 sequenceDiagram
   autonumber
   participant CD as Core Domain Service
@@ -12,4 +11,3 @@ sequenceDiagram
   ACL->>ACL: Map VendorDTO -> CanonicalCustomer
   ACL->>ACL: Normalize enums, dates, ids; validate required fields
   ACL-->>CD: CanonicalCustomer JSON
-```
