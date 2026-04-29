@@ -1,4 +1,3 @@
-```mermaid
 flowchart LR
   U[Users] --> Ingress[Ingress / Gateway\ntraffic split]
   Ingress --> Stable[Stable ReplicaSet\nv1]
@@ -7,4 +6,3 @@ flowchart LR
   RO --> Analysis[Analysis Template\n(SLO gates)]
   OBS[Metrics/Logs/Traces] <---> Stable
   OBS <---> Canary
-```
