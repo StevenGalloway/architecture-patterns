@@ -1,4 +1,3 @@
-```mermaid
 flowchart TB
   S0[Start: 100% stable] --> S1[Shift 5% to canary]
   S1 --> A1{Analysis pass?}
@@ -10,4 +9,3 @@ flowchart TB
   S3 --> A3{Analysis pass?}
   A3 -->|yes| S4[Promote: 100% canary becomes stable]
   A3 -->|no| RB
-```
