@@ -11,7 +11,7 @@ sequenceDiagram
   MB->>C: GET /featured
   MB->>R: GET /recs?limit=5
   alt Recs slow/unavailable
-    MB-->>M: 200 OK (partial)\nprofile + featured (fallback recs=[])
+    MB-->>M: 200 OK - profile + featured (fallback recs=[])
   else Recs ok
     MB-->>M: 200 OK (mobile-shaped payload)
   end

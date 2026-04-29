@@ -6,7 +6,7 @@ flowchart TB
     V2[Mapping v2\nVendor schema v2]
   end
 
-  ACL -->|detect vendor version\n(header/field presence)| V1
+  ACL -->|detect vendor version - header/field presence| V1
   ACL -->|feature flag / rollout| V2
 
   VEND[Vendor API] --> ACL

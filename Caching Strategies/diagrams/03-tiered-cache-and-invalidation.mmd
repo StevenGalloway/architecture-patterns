@@ -5,5 +5,5 @@ flowchart TB
   ORIGIN --> L2
   L2 --> L1
 
-  EVT[Event Bus\n(pub/sub or outbox/CDC)] -->|invalidate keys| L2
+  EVT[Event Bus - pub/sub or outbox/CDC] -->|invalidate keys| L2
   L2 -->|optional broadcast| L1

@@ -15,7 +15,7 @@ flowchart TB
   C --> GW
 
   GW -->|95% traffic| V1
-  GW -->|5% canary\n(header/tenant-based)| V2
+  GW -->|5% canary - header/tenant-based| V2
 
   subgraph Controls
     M[Metrics/SLO gates\np95 latency • 5xx rate]

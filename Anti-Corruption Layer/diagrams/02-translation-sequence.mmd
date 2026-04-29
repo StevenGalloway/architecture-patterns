@@ -9,5 +9,5 @@ sequenceDiagram
   ACL->>V: GET /vendor/customer?id={id}
   V-->>ACL: vendor payload (weird schema)
   ACL->>ACL: Map VendorDTO -> CanonicalCustomer
-  ACL->>ACL: Normalize enums, dates, ids; validate required fields
+  ACL->>ACL: Normalize enums, dates, ids, validate required fields
   ACL-->>CD: CanonicalCustomer JSON
