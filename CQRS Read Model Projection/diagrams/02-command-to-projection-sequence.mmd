@@ -1,4 +1,3 @@
-```mermaid
 sequenceDiagram
   autonumber
   participant C as Client
@@ -22,4 +21,3 @@ sequenceDiagram
   C->>QRY: GET /orders/{id}
   QRY->>RDB: Read projection
   QRY-->>C: 200 OK (may be stale until projection catches up)
-```
