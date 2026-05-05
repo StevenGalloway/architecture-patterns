@@ -1,4 +1,3 @@
-```mermaid
 flowchart LR
   subgraph Domains
     O[Orders Domain\nOwns Orders Product]
@@ -6,8 +5,8 @@ flowchart LR
   end
 
   subgraph Platform
-    P[Self-Serve Data Platform\n(storage, orchestration, metadata, policy)]
-    G[Federated Governance\n(standards + policy-as-code)]
+    P[Self-Serve Data Platform - storage, orchestration, metadata, policy]
+    G[Federated Governance - standards + policy-as-code]
   end
 
   O -->|publishes| P
@@ -24,4 +23,3 @@ flowchart LR
   P --> BI
   P --> DS
   P --> APPS
-```
