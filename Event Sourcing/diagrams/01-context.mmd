@@ -1,6 +1,5 @@
-```mermaid
 flowchart LR
-  C[Client] --> CMD[Command API\n(validate + append events)]
+  C[Client] --> CMD[Command API - validate + append events]
   CMD --> ES[(Event Store\nappend-only)]
   ES --> PROJ[Projector\nread model + snapshots]
   PROJ --> RM[(Read Model DB)]
@@ -10,4 +9,3 @@ flowchart LR
   OBS[Observability\nlogs/metrics/traces] <---> CMD
   OBS <---> PROJ
   OBS <---> QRY
-```
