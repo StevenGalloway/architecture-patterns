@@ -1,4 +1,3 @@
-```mermaid
 flowchart LR
   P[Producer] --> MQ[(Message Broker\nRabbitMQ)]
   MQ --> C[Consumer Service]
@@ -8,4 +7,3 @@ flowchart LR
   OBS[Observability\nmetrics/logs/traces] <---> C
   OBS <---> MQ
   OBS <---> D
-```
