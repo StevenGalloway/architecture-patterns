@@ -1,4 +1,3 @@
-```mermaid
 flowchart TB
   MQ[(Broker Queue)] --> C[Consumer]
   C -->|transient failure| RETRY[Retry with backoff]
@@ -9,4 +8,3 @@ flowchart TB
 
   C --> MET[Metrics\nprocessed/dupes/failures/lag]
   DLQ --> MET
-```
