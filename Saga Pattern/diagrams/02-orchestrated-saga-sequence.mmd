@@ -1,4 +1,3 @@
-```mermaid
 sequenceDiagram
   autonumber
   participant C as Client
@@ -29,4 +28,3 @@ sequenceDiagram
   MQ-->>O: ShippingArranged
   O->>O: state = COMPLETED
   O-->>C: 202 Accepted (saga completes async)
-```

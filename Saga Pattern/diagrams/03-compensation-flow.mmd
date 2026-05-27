@@ -1,4 +1,3 @@
-```mermaid
 flowchart TB
   FAIL[Failure at step N] --> ORCH[Saga Orchestrator]
   ORCH -->|Compensate| C1[Cancel Shipping]
@@ -16,4 +15,3 @@ flowchart TB
   PAY -->|Refunded| ORCH
   INV -->|Released| ORCH
   SHIP -->|Cancelled| ORCH
-```

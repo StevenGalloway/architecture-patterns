@@ -1,6 +1,5 @@
-```mermaid
 flowchart LR
-  A[Client/API] --> S[Service\n(business tx)]
+  A[Client/API] --> S[Service - business tx]
   S --> DB[(Postgres)]
   DB -->|WAL| CDC[Debezium CDC\nKafka Connect]
   CDC --> K[(Kafka)]
@@ -9,4 +8,3 @@ flowchart LR
   OBS[Observability\nmetrics/logs/traces] <---> S
   OBS <---> CDC
   OBS <---> C1
-```

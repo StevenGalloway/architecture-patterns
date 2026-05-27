@@ -4,7 +4,7 @@
 Accepted
 
 ## Date
-2026-01-11
+2025-10-29
 
 ## Context
 Multi-region is hardest when state is tightly coupled to a single region.

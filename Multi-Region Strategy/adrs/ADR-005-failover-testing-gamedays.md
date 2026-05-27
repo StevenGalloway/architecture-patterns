@@ -4,7 +4,7 @@
 Accepted
 
 ## Date
-2026-01-11
+2026-02-18
 
 ## Context
 Failover that is untested is effectively broken. Operators need muscle memory.

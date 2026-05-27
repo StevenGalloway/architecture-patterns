@@ -1,4 +1,3 @@
-```mermaid
 sequenceDiagram
   autonumber
   participant C as Client
@@ -17,5 +16,4 @@ sequenceDiagram
   ER-->>C: 200 OK
 
   N-->>ER: 200 OK (shadow response)
-  ER->>D: Compare legacy vs new output\n(log diffs/metrics)
-```
+  ER->>D: Compare legacy vs new output - log diffs/metrics

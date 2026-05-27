@@ -4,7 +4,7 @@
 Accepted
 
 ## Date
-2026-01-11
+2025-09-03
 
 ## Context
 We need global traffic steering that can fail over reliably on regional degradation.

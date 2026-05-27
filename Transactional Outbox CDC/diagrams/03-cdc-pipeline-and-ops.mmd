@@ -1,17 +1,15 @@
-```mermaid
 flowchart TB
   DB[(Postgres)] --> WAL[WAL / Logical Replication]
   WAL --> CONNECT[Kafka Connect\nDebezium Connector]
-  CONNECT --> TOPIC[(Kafka Topic\n(outbox events))]
+  CONNECT --> TOPIC[(Kafka Topic - outbox events)]
   TOPIC --> CONSUMER[Consumers]
 
   subgraph Ops
     LAG[CDC Lag Metrics]
     DLQ[Dead-letter Topic]
-    REPLAY[Replay / Backfill\n(reprocess from offset)]
+    REPLAY[Replay / Backfill - reprocess from offset]
   end
 
   CONNECT --> LAG
   CONSUMER --> DLQ
   REPLAY --> TOPIC
-```

@@ -1,6 +1,5 @@
-```mermaid
 flowchart LR
-  U[Users] --> DNS[Global DNS\n(Route 53 Latency/Weighted)]
+  U[Users] --> DNS[Global DNS - Route 53 Latency/Weighted]
   DNS --> R1[Region A\nALB + Compute]
   DNS --> R2[Region B\nALB + Compute]
 
@@ -16,4 +15,3 @@ flowchart LR
   BECS --> DDB
   AECS --> OBSA[CloudWatch\nLogs/Metrics]
   BECS --> OBSB[CloudWatch\nLogs/Metrics]
-```

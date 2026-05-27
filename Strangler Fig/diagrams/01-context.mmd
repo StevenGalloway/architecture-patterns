@@ -1,6 +1,5 @@
-```mermaid
 flowchart LR
-  C[Client] --> ER[Edge Router\n(reverse proxy / gateway)]
+  C[Client] --> ER[Edge Router - reverse proxy / gateway]
   ER -->|default| L[Legacy Monolith]
   ER -->|/billing/*| N[New Billing Service]
 
@@ -15,4 +14,3 @@ flowchart LR
   OBS[Observability\nlogs/metrics/traces] <---> ER
   OBS <---> L
   OBS <---> N
-```

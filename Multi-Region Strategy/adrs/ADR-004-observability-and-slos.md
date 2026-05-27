@@ -4,7 +4,7 @@
 Accepted
 
 ## Date
-2026-01-11
+2025-12-18
 
 ## Context
 Multi-region failures can be subtle: partial outages, elevated latency, regional dependency issues.
