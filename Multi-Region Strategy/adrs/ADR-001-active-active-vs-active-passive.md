@@ -4,7 +4,7 @@
 Accepted
 
 ## Date
-2026-01-11
+2025-06-25
 
 ## Context
 We require low latency and high availability. DR should be continuously exercised rather than rarely invoked.
