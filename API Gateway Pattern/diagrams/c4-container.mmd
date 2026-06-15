@@ -1,0 +1,47 @@
+C4Container
+  title Container Diagram — API Gateway System
+
+  Person(client, "Client", "Web, mobile, or partner API consumer")
+
+  System_Ext(identityProvider, "Identity Provider", "OIDC / JWKS endpoint")
+  System_Ext(waf, "WAF", "Pre-filters traffic before gateway")
+
+  System_Boundary(gatewaySystem, "API Gateway System") {
+
+    Container(gatewayProcess, "Gateway Process", "Node.js / Kong / Envoy", "Handles request routing, JWT validation, rate limit enforcement, header injection, and access logging. Stateless; runs as multiple instances behind a load balancer.")
+
+    Container(rateLimitStore, "Rate Limit Store", "Redis (cluster mode)", "Stores per-tenant token bucket state. Shared across all gateway instances to enforce global rate limits consistently.")
+
+    Container(jwksCache, "JWKS Cache", "In-process memory cache", "Caches public keys from the Identity Provider JWKS endpoint. TTL: 5 minutes. Invalidated and re-fetched on unexpected 401 from upstream.")
+
+    Container(configStore, "Route Config Store", "Git + CI sync / Consul KV", "Source of truth for route definitions: path patterns, upstream targets, auth requirements, rate limit tiers, and timeouts. Updated via GitOps PR process.")
+
+    Container(loadBalancer, "Load Balancer", "AWS ALB / NGINX", "Distributes inbound traffic across gateway instances. Performs health checks. Terminates TLS.")
+
+  }
+
+  System_Boundary(upstreamBoundary, "Internal Services (private subnet)") {
+    Container(usersService, "Users Service", "Any stack", "")
+    Container(ordersService, "Orders Service", "Any stack", "")
+    Container(otherServices, "Other Services", "Any stack", "")
+  }
+
+  System(observability, "Observability Platform", "Logging + tracing + metrics")
+
+  Rel(client, waf, "HTTPS", "TLS 1.3")
+  Rel(waf, loadBalancer, "HTTP", "Filtered traffic")
+  Rel(loadBalancer, gatewayProcess, "HTTP", "Round-robin across instances")
+
+  Rel(gatewayProcess, jwksCache, "Reads cached public keys", "In-process")
+  Rel(jwksCache, identityProvider, "Fetches JWKS on miss or TTL expiry", "HTTPS")
+
+  Rel(gatewayProcess, rateLimitStore, "Check and decrement token bucket", "Redis protocol, <1ms")
+  Rel(gatewayProcess, configStore, "Reads route definitions on startup and config reload", "HTTP / KV read")
+
+  Rel(gatewayProcess, usersService, "Forwards request + identity headers", "HTTP, private subnet")
+  Rel(gatewayProcess, ordersService, "Forwards request + identity headers", "HTTP, private subnet")
+  Rel(gatewayProcess, otherServices, "Forwards request + identity headers", "HTTP, private subnet")
+
+  Rel(gatewayProcess, observability, "Access logs, trace spans, metrics", "OTLP / stdout JSON")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

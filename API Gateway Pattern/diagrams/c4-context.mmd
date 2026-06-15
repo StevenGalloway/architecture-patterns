@@ -1,0 +1,28 @@
+C4Context
+  title System Context — API Gateway
+
+  Person(webUser, "Web User", "Accesses the platform via browser application")
+  Person(mobileUser, "Mobile User", "Accesses the platform via iOS or Android app")
+  Person(partner, "Partner / Integrator", "External company consuming APIs via service account and JWT")
+
+  System(apiGateway, "API Gateway", "Single external entry point. Enforces auth, rate limiting, request routing, and observability for all client traffic.")
+
+  System_Ext(identityProvider, "Identity Provider", "Issues and manages JWTs. Exposes JWKS endpoint for signature verification. (Auth0, Okta, or internal OIDC server)")
+  System_Ext(waf, "WAF / DDoS Protection", "Filters malicious traffic before it reaches the gateway. (Cloudflare, AWS WAF + Shield)")
+
+  System(backendServices, "Internal Services", "Domain services: Users, Orders, Recommendations, and others. Not directly reachable from the internet.")
+  System(observabilityPlatform, "Observability Platform", "Receives structured access logs, distributed traces, and metrics from the gateway and all upstream services.")
+  System(secretsManager, "Secrets / Cert Manager", "Stores TLS certificates, JWKS cache config, and upstream credentials. (AWS Secrets Manager, HashiCorp Vault)")
+
+  Rel(webUser, waf, "HTTPS requests", "TLS 1.3")
+  Rel(mobileUser, waf, "HTTPS requests", "TLS 1.3")
+  Rel(partner, waf, "HTTPS requests", "TLS 1.3 + Bearer JWT")
+
+  Rel(waf, apiGateway, "Filtered traffic", "HTTP internally")
+
+  Rel(apiGateway, identityProvider, "Fetches JWKS for JWT signature verification", "HTTPS, cached 5 min TTL")
+  Rel(apiGateway, backendServices, "Forwards authenticated requests with injected identity headers", "HTTP, private subnet")
+  Rel(apiGateway, observabilityPlatform, "Structured access logs, trace spans, metrics", "OTLP / JSON")
+  Rel(apiGateway, secretsManager, "Reads TLS cert, upstream credentials on startup", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
