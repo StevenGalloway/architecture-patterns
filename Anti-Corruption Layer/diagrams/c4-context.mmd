@@ -1,0 +1,26 @@
+C4Context
+  title System Context — Anti-Corruption Layer
+
+  Person(domainEngineer, "Domain Engineer", "Builds domain services that consume vendor data via the ACL. Never calls vendor APIs directly.")
+
+  System(aclService, "Anti-Corruption Layer", "Translates vendor-specific response payloads into stable canonical domain models. Enforces schema validation, circuit breaking, and PII handling at the vendor boundary.")
+
+  System(coreDomain, "Core Domain Services", "Internal services (Customer, Order, Product). Consume canonical types from the ACL. Have no knowledge of any vendor's API shape or naming conventions.")
+
+  System_Ext(vendorCRM, "Vendor CRM", "External CRM or SaaS platform. API schema changes on the vendor's schedule. Data uses vendor-specific field names, types, and enums.")
+  System_Ext(vendorERP, "Vendor ERP / Secondary", "Additional external system with its own schema and API contract. May share domain entities with different field structures.")
+
+  System(secretsManager, "Secrets / Credential Store", "Stores vendor API keys, OAuth client secrets, and mTLS certificates. ACL fetches credentials at runtime; never present in application config files.")
+  System(observabilityPlatform, "Observability Platform", "Receives structured logs from every vendor call: latency, validation result, circuit breaker state, translation outcome, and canonical entity type.")
+  System(schemaRegistry, "Schema Registry / Contract Tests", "Stores vendor response schemas and canonical model versions. CI runs contract tests against vendor sandbox responses to detect schema drift before deployment.")
+
+  Rel(coreDomain, aclService, "Requests canonical domain entities", "HTTP, internal network")
+  Rel(aclService, vendorCRM, "Fetches raw vendor data", "HTTPS, vendor-specific auth")
+  Rel(aclService, vendorERP, "Fetches raw vendor data", "HTTPS, vendor-specific auth")
+  Rel(aclService, secretsManager, "Reads vendor credentials at runtime", "HTTPS")
+  Rel(aclService, observabilityPlatform, "Structured vendor call logs, circuit breaker events, validation failures", "OTLP / JSON")
+  Rel(aclService, schemaRegistry, "Validates vendor payloads against registered schemas", "HTTPS")
+  Rel(domainEngineer, coreDomain, "Builds and operates", "")
+  Rel(domainEngineer, aclService, "Writes translation functions and contract test fixtures", "")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

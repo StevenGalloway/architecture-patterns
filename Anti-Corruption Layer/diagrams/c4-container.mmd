@@ -1,0 +1,45 @@
+C4Container
+  title Container Diagram — Anti-Corruption Layer System
+
+  Person(coreDomainDev, "Core Domain Service", "Internal service (Customer, Order, Billing) that needs canonical customer data. Calls the ACL over internal HTTP.")
+
+  System_Ext(vendorAPI, "Vendor CRM API", "External vendor API. Returns VendorCustomerV3 JSON payloads with vendor-specific field names and enum values.")
+  System_Ext(secretsManager, "Secrets Manager", "Stores vendor API keys and OAuth client secrets. ACL resolves credentials at startup and on rotation.")
+  System_Ext(redis, "Circuit Breaker State Store (Redis)", "Shared Redis instance. Stores circuit breaker state (closed/open/half-open) and failure counts per vendor. Shared across all ACL instances so circuit state is consistent under horizontal scaling.")
+  System_Ext(observability, "Observability Platform", "Receives structured ACL logs, vendor call metrics, schema validation events, and circuit breaker transition events.")
+
+  System_Boundary(aclSystem, "Anti-Corruption Layer") {
+
+    Container(apiLayer, "ACL API Layer", "Node.js / Express", "Accepts inbound requests from core domain services. Validates consumer auth token (internal service identity). Routes request to appropriate vendor adapter based on canonical type requested.")
+
+    Container(responseCache, "Response Cache", "Node.js in-process LRU + Redis", "Caches vendor API responses by (vendor, endpoint, resource ID) key with configurable TTL. Cache hit skips vendor call, schema validation, and translation entirely. TTL is short for security-sensitive fields (account status: 60s) and longer for stable reference data (product catalog: 5m).")
+
+    Container(vendorClient, "Vendor API Client", "Node.js / Axios", "Makes outbound HTTPS calls to the vendor API. Implements: configurable timeouts per vendor endpoint, exponential backoff retry on transient errors (5xx, network timeout), request ID injection for vendor-side correlation, and credential injection from Secrets Manager at call time.")
+
+    Container(circuitBreaker, "Circuit Breaker", "Node.js / opossum", "Tracks vendor call failure rate using the shared Redis state store. Opens the circuit after configured failure threshold (default: 5 failures in 30s). Returns 503 to consumer immediately when open. Half-open probes resume after configurable recovery window (default: 30s). Prevents thundering herd against a degraded vendor.")
+
+    Container(schemaValidator, "Schema Validator", "Node.js / Ajv", "Validates inbound vendor payload against the expected JSON Schema for the vendor API version. Runs before translation. Strict mode for security-relevant fields (account_status, role, entitlements): rejects if missing or wrong type. Lenient mode for informational fields: logs warning, continues with null. Emits schema_validation_result metric.")
+
+    Container(translationEngine, "Translation Engine", "TypeScript pure functions", "Maps VendorCustomerV2 | VendorCustomerV3 → CanonicalCustomer. Pure functions with no side effects. Applies output allowlist: only fields present in CanonicalCustomer type are mapped; all other vendor fields are dropped. Normalizes enums: vendor account_classification values mapped to canonical AccountType union. Normalizes address from flat string (v2) or nested object (v3) to canonical AddressBlock type.")
+
+    Container(contractTestRunner, "Contract Test Runner", "Jest / CI pipeline", "Runs in CI against vendor sandbox. Executes translation functions against recorded vendor payload fixtures. Asserts canonical output matches expected CanonicalCustomer for each fixture. Fails the build if any fixture produces unexpected output. New vendor API versions require new fixtures before translation code is merged.")
+
+  }
+
+  Rel(coreDomainDev, apiLayer, "GET /canonical/customer/{id}", "HTTP/JSON (internal mTLS)")
+  Rel(apiLayer, responseCache, "Check cache by (vendor, endpoint, id)", "in-process / Redis")
+  Rel(responseCache, apiLayer, "Cache hit: return cached CanonicalCustomer", "in-process / Redis")
+  Rel(apiLayer, circuitBreaker, "Cache miss: attempt vendor call via circuit breaker", "in-process")
+  Rel(circuitBreaker, vendorClient, "Circuit closed: forward vendor call", "in-process")
+  Rel(vendorClient, vendorAPI, "GET /api/v3/customers/{id}", "HTTPS (vendor API key auth)")
+  Rel(vendorClient, secretsManager, "Resolve vendor API key at call time", "AWS SDK")
+  Rel(circuitBreaker, redis, "Read/write circuit breaker state and failure counts", "Redis protocol")
+  Rel(vendorClient, schemaValidator, "Raw vendor JSON response", "in-process")
+  Rel(schemaValidator, translationEngine, "Validated vendor payload (or rejection)", "in-process")
+  Rel(translationEngine, responseCache, "Store translated CanonicalCustomer with TTL", "in-process / Redis")
+  Rel(translationEngine, apiLayer, "CanonicalCustomer returned to consumer", "in-process")
+  Rel(apiLayer, observability, "Emit structured log: vendor, latency, cache_hit, validation_result, translation_result", "OpenTelemetry")
+  Rel(circuitBreaker, observability, "Emit circuit breaker state transitions", "OpenTelemetry")
+  Rel(contractTestRunner, vendorAPI, "Record real vendor sandbox responses as fixtures (CI only)", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
