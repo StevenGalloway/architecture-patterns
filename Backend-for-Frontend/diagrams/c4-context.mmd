@@ -1,0 +1,35 @@
+C4Context
+  title BFF Pattern — System Context
+
+  Person(mobileUser, "Mobile User", "Uses the native mobile app on iOS or Android")
+  Person(webUser, "Web User", "Uses the web application in a browser")
+  Person(partnerUser, "Partner / Integrator", "Uses the partner portal or external API integration")
+
+  System_Boundary(bffSystem, "BFF System (one BFF per client experience)") {
+    System(mobileBFF, "Mobile BFF", "Aggregates domain data, shapes payloads for mobile (60% smaller), applies mobile-specific caching and resilience. Owned by the mobile frontend team.")
+    System(webBFF, "Web BFF", "Aggregates domain data, shapes payloads for web, applies web-specific caching and resilience. Owned by the web frontend team.")
+    System(partnerBFF, "Partner BFF", "Aggregates domain data, applies partner-scoped field visibility and rate contracts. Owned by the partner integration team.")
+  }
+
+  System_Ext(apiGateway, "API Gateway", "Handles TLS termination, authentication (JWT validation), coarse-grained routing, and global rate limiting. Routes client traffic to the appropriate BFF.")
+  System_Ext(identityProvider, "Identity Provider", "Issues and validates JWTs (OIDC / OAuth 2.0). BFF validates tokens against the JWKS endpoint.")
+  System_Ext(domainServices, "Domain Services", "Profile, Catalog, Recommendations, Orders, Inventory. Each is independently owned by a domain team. BFFs call these services in parallel.")
+  System_Ext(observabilityPlatform, "Observability Platform", "Receives structured logs, distributed traces, and metrics from all BFFs. Provides cross-BFF visibility and SLO dashboards.")
+
+  Rel(mobileUser, apiGateway, "HTTPS requests", "TLS")
+  Rel(webUser, apiGateway, "HTTPS requests", "TLS")
+  Rel(partnerUser, apiGateway, "HTTPS requests", "TLS")
+
+  Rel(apiGateway, mobileBFF, "Routes mobile traffic", "HTTP/2, private network")
+  Rel(apiGateway, webBFF, "Routes web traffic", "HTTP/2, private network")
+  Rel(apiGateway, partnerBFF, "Routes partner traffic", "HTTP/2, private network")
+
+  Rel(apiGateway, identityProvider, "Fetches JWKS for JWT validation", "HTTPS")
+
+  Rel(mobileBFF, domainServices, "Parallel domain calls per request", "HTTP/2, private network, mTLS")
+  Rel(webBFF, domainServices, "Parallel domain calls per request", "HTTP/2, private network, mTLS")
+  Rel(partnerBFF, domainServices, "Parallel domain calls per request", "HTTP/2, private network, mTLS")
+
+  Rel(mobileBFF, observabilityPlatform, "Structured logs, traces, metrics", "OTLP")
+  Rel(webBFF, observabilityPlatform, "Structured logs, traces, metrics", "OTLP")
+  Rel(partnerBFF, observabilityPlatform, "Structured logs, traces, metrics", "OTLP")
