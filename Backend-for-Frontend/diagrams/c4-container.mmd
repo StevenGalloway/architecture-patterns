@@ -1,0 +1,53 @@
+C4Container
+  title BFF Pattern — Container Diagram
+
+  Person(mobileUser, "Mobile User", "Native iOS / Android app")
+  Person(webUser, "Web User", "Browser-based web app")
+
+  System_Ext(apiGateway, "API Gateway", "Auth, routing, global rate limiting")
+  System_Ext(identityProvider, "Identity Provider", "OIDC / JWT issuer, JWKS endpoint")
+
+  System_Boundary(mobileBFFBoundary, "Mobile BFF (owned by Mobile Frontend Team)") {
+    Container(mobileAPIHandler, "API Handler", "Node.js / Express", "Exposes mobile-optimized HTTP endpoints. Validates request parameters. Returns client contract responses.")
+    Container(mobileComposition, "Composition Layer", "Node.js", "Dispatches parallel calls to domain services using Promise.all(). Assembles partial responses on upstream failure. Applies mobile response projection (allowlist).")
+    Container(mobileAuthMiddleware, "Auth Middleware", "Platform shared library", "Validates JWT alg, iss, aud, exp, and signature. Extracts identity claims. Propagates X-User-ID, X-Tenant-ID to upstream calls.")
+    ContainerDb(mobileCache, "Response Cache", "Redis", "Stores shaped BFF responses keyed on endpoint + user profile hash. TTL: 5–15 minutes (mobile-optimized for battery and bandwidth).")
+    Container(mobileRequestId, "Request ID Propagator", "Platform shared library", "Generates request IDs. Injects traceparent headers on all upstream calls. Ensures end-to-end trace correlation.")
+  }
+
+  System_Boundary(webBFFBoundary, "Web BFF (owned by Web Frontend Team)") {
+    Container(webAPIHandler, "API Handler", "Node.js / Express", "Exposes web-optimized HTTP endpoints. Supports SSE for streaming AI content. Returns client contract responses.")
+    Container(webComposition, "Composition Layer", "Node.js", "Dispatches parallel calls to domain services. Assembles partial responses on upstream failure. Applies web response projection (richer schema than mobile).")
+    Container(webAuthMiddleware, "Auth Middleware", "Platform shared library", "Same platform library as mobile BFF. Validates JWT. Distinct aud claim configured for web BFF client type.")
+    ContainerDb(webCache, "Response Cache", "Redis", "Stores shaped BFF responses keyed on endpoint + user profile hash. TTL: 30–60 seconds (web-optimized for interactivity freshness).")
+    Container(webRequestId, "Request ID Propagator", "Platform shared library", "Same platform library as mobile BFF. Generates request IDs. Injects traceparent on upstream calls.")
+  }
+
+  System_Boundary(domainServices, "Domain Services") {
+    Container(profileService, "Profile Service", "Internal domain API", "User profile, preferences, tier")
+    Container(ordersService, "Orders Service", "Internal domain API", "Order history, active cart, status")
+    Container(catalogService, "Catalog Service", "Internal domain API", "Product catalog, inventory, pricing")
+  }
+
+  Rel(mobileUser, apiGateway, "HTTPS", "TLS")
+  Rel(webUser, apiGateway, "HTTPS", "TLS")
+
+  Rel(apiGateway, mobileAPIHandler, "Routed mobile traffic", "HTTP/2")
+  Rel(apiGateway, webAPIHandler, "Routed web traffic", "HTTP/2")
+  Rel(apiGateway, identityProvider, "JWKS fetch", "HTTPS")
+
+  Rel(mobileAPIHandler, mobileAuthMiddleware, "Validates inbound JWT")
+  Rel(mobileAPIHandler, mobileComposition, "Delegates to composition after auth")
+  Rel(mobileComposition, mobileCache, "Read / write response cache")
+  Rel(mobileComposition, mobileRequestId, "Injects request ID on upstream calls")
+  Rel(mobileComposition, profileService, "GET /users/{id}", "HTTP/2, mTLS")
+  Rel(mobileComposition, ordersService, "GET /orders?user={id}", "HTTP/2, mTLS")
+  Rel(mobileComposition, catalogService, "GET /catalog/featured", "HTTP/2, mTLS")
+
+  Rel(webAPIHandler, webAuthMiddleware, "Validates inbound JWT")
+  Rel(webAPIHandler, webComposition, "Delegates to composition after auth")
+  Rel(webComposition, webCache, "Read / write response cache")
+  Rel(webComposition, webRequestId, "Injects request ID on upstream calls")
+  Rel(webComposition, profileService, "GET /users/{id}", "HTTP/2, mTLS")
+  Rel(webComposition, ordersService, "GET /orders?user={id}", "HTTP/2, mTLS")
+  Rel(webComposition, catalogService, "GET /catalog/featured", "HTTP/2, mTLS")
