@@ -1,0 +1,52 @@
+C4Container
+  title Container Diagram — Bulkhead Pattern (Order Processing Service)
+
+  Person(client, "Client", "API consumer placing an order. Mobile, web, or partner.")
+
+  System_Boundary(orderProcessingBoundary, "Order Processing Service") {
+
+    Container(requestHandler, "Request Handler", "Rust / Axum", "Accepts inbound HTTP requests for order creation. Validates request schema. Passes order to the downstream call orchestrator. Returns 200 on success or a structured error on bulkhead rejection.")
+
+    Container(bulkheadManager, "Bulkhead Manager", "tokio::sync::Semaphore", "Maintains one named semaphore per downstream dependency. Acquires a permit before each outbound call. Releases the permit when the call completes or times out. Rejects immediately (fail-fast) when no permits are available. Emits per-dependency metrics on every acquire, release, and rejection.")
+
+    Container(paymentBulkhead, "Payment Bulkhead", "Semaphore — 80 permits", "Critical path. Dedicated semaphore for all calls to the Payment Service. 80 concurrent permits. Rejection of a payment call fails the order; never shed except under extreme overload.")
+
+    Container(inventoryBulkhead, "Inventory Bulkhead", "Semaphore — 60 permits", "Critical path. Dedicated semaphore for all calls to the Inventory Service. 60 concurrent permits. Rejection of an inventory call fails the order; never shed except under extreme overload.")
+
+    Container(fraudBulkhead, "Fraud Detection Bulkhead", "Semaphore — 30 permits", "Non-critical. Dedicated semaphore for all calls to the Fraud Detection Service. 30 concurrent permits. Rejection causes the order to proceed without a synchronous fraud check (async fallback) or to be flagged for manual review.")
+
+    Container(notificationBulkhead, "Notification Bulkhead", "Semaphore — 20 permits", "Non-critical, best-effort. Dedicated semaphore for all calls to the Notification Service. 20 concurrent permits. Rejection is silent; failed notifications are retried asynchronously. Order success is never blocked.")
+
+    Container(circuitBreakerStore, "Circuit Breaker State Store", "In-process state (Tokio / Resilience4j)", "Maintains circuit breaker state (CLOSED, OPEN, HALF-OPEN) per downstream dependency. Works alongside the bulkhead: bulkhead limits concurrent in-flight requests; circuit breaker stops all requests after failure threshold. Complementary, not redundant.")
+
+    Container(metricsEmitter, "Metrics Emitter", "OpenTelemetry SDK", "Receives bulkhead events from the Bulkhead Manager and circuit breaker state changes from the Circuit Breaker Store. Emits structured metrics and logs to the observability platform. Metrics: permits_acquired, permits_rejected, permits_available, utilization_pct, acquire_latency_us, downstream_latency_ms.")
+
+  }
+
+  System_Ext(paymentService, "Payment Service", "Processes payment authorization. Critical path. SLA: p99 < 300ms.")
+  System_Ext(inventoryService, "Inventory Service", "Validates and reserves inventory. Critical path. SLA: p99 < 200ms.")
+  System_Ext(fraudDetectionService, "Fraud Detection Service", "Evaluates fraud risk for new customers. Non-critical for established customers. p99 latency subject to ML model load.")
+  System_Ext(notificationService, "Notification Service", "Sends order confirmation emails and push notifications. Best-effort. Non-blocking.")
+  System_Ext(observability, "Observability Platform", "Receives bulkhead metrics, structured logs, and distributed traces. Hosts utilization heatmap and rejection rate dashboards.")
+
+  Rel(client, requestHandler, "POST /orders", "HTTPS")
+
+  Rel(requestHandler, bulkheadManager, "Requests permit before each downstream call", "In-process")
+
+  Rel(bulkheadManager, paymentBulkhead, "Acquires / releases payment permit", "In-process semaphore")
+  Rel(bulkheadManager, inventoryBulkhead, "Acquires / releases inventory permit", "In-process semaphore")
+  Rel(bulkheadManager, fraudBulkhead, "Acquires / releases fraud detection permit", "In-process semaphore")
+  Rel(bulkheadManager, notificationBulkhead, "Acquires / releases notification permit", "In-process semaphore")
+
+  Rel(bulkheadManager, circuitBreakerStore, "Checks circuit breaker state before acquiring permit; updates state on failure", "In-process")
+
+  Rel(paymentBulkhead, paymentService, "Outbound HTTP call (within permit)", "HTTP, private network")
+  Rel(inventoryBulkhead, inventoryService, "Outbound HTTP call (within permit)", "HTTP, private network")
+  Rel(fraudBulkhead, fraudDetectionService, "Outbound HTTP call (within permit)", "HTTP, private network")
+  Rel(notificationBulkhead, notificationService, "Outbound HTTP call (within permit)", "HTTP, private network")
+
+  Rel(bulkheadManager, metricsEmitter, "Permit events: acquired, released, rejected", "In-process")
+  Rel(circuitBreakerStore, metricsEmitter, "State change events: CLOSED, OPEN, HALF-OPEN", "In-process")
+  Rel(metricsEmitter, observability, "Metrics, structured logs, trace spans", "OTLP / stdout JSON")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
