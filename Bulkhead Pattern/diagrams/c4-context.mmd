@@ -1,0 +1,25 @@
+C4Context
+  title System Context — Bulkhead Pattern
+
+  Person(backendEngineer, "Backend Engineer", "Configures per-dependency bulkhead limits in bulkhead.yaml. Sets permit counts, fail-fast policy, and documents rationale and review dates.")
+  Person(sre, "Operations / SRE", "Monitors per-dependency permit utilization and rejection rates. Responds to saturation alerts. Runs quarterly chaos game days to validate isolation.")
+
+  System(orderProcessingService, "Order Processing Service", "Accepts inbound order creation requests. Calls four downstream dependencies through dedicated per-dependency bulkheads. Guarantees critical-path (Payment, Inventory) capacity even during non-critical dependency degradation.")
+
+  System_Ext(downstreamDependencies, "Downstream Dependency Group", "Payment Service, Inventory Service, Fraud Detection Service, Notification Service. Each receives a dedicated semaphore permit allocation from the Order Processing bulkhead manager.")
+
+  System_Ext(observabilityPlatform, "Observability Platform", "Receives per-dependency bulkhead metrics: permits acquired, permits rejected, permits available, utilization percentage. Hosts saturation dashboards and rejection rate alerts. (Datadog, Grafana, Honeycomb)")
+
+  System_Ext(configurationStore, "Configuration Store", "Stores bulkhead limit configuration per dependency: max_concurrent_requests, fail_fast policy, rationale, review date, and owner. Version-controlled. (Git + CI validation, Consul KV, or environment config)")
+
+  Rel(backendEngineer, configurationStore, "Sets and reviews bulkhead limits", "Pull request + CI schema validation")
+  Rel(backendEngineer, orderProcessingService, "Deploys service with updated bulkhead configuration", "CI/CD pipeline")
+
+  Rel(sre, observabilityPlatform, "Reviews utilization heatmap and rejection rate dashboards", "Browser / Grafana")
+  Rel(sre, orderProcessingService, "Responds to saturation alerts; adjusts limits during incidents", "Runbook + config update")
+
+  Rel(orderProcessingService, downstreamDependencies, "Calls each dependency through its dedicated semaphore bulkhead. Fail-fast on permit exhaustion.", "HTTP, per-dependency isolated semaphore")
+  Rel(orderProcessingService, observabilityPlatform, "Emits bulkhead events: permit acquired, released, rejected, circuit breaker state", "OTLP / structured JSON logs")
+  Rel(orderProcessingService, configurationStore, "Reads bulkhead limit configuration on startup", "HTTP / file read")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
