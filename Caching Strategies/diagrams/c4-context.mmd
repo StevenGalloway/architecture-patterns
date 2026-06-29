@@ -1,0 +1,24 @@
+C4Context
+  title System Context — Caching Strategies
+
+  Person(webUser, "Web User", "Accesses the platform via browser; benefits from sub-millisecond cached reads on product catalog and session data")
+  Person(mobileUser, "Mobile User", "Accesses the platform via iOS or Android app; cache reduces latency on mobile networks")
+  Person(internalConsumer, "Internal Service Consumer", "A microservice calling another service; benefits from cached read-through responses on shared reference data")
+
+  System(cachingLayer, "Caching Layer", "L1 in-process cache (per-instance LRU) + L2 Redis shared cache. Serves frequently-accessed data in under 1 millisecond without touching the origin database.")
+
+  System_Ext(originDatabase, "Origin Database", "PostgreSQL / MySQL. Authoritative data store. Caching layer reduces read load by 60-80% for hot-key workloads.")
+  System_Ext(messageBus, "Message Bus", "Kafka / NATS. Publishes data change events (e.g., product.updated, user.deleted) that trigger cache invalidation in the caching layer.")
+  System_Ext(identityProvider, "Identity Provider", "Issues JWT tokens for access-controlled cached data. The caching layer does not enforce auth — the application layer validates identity before reading from or writing to the cache.")
+  System_Ext(observabilityPlatform, "Observability Platform", "Receives cache hit/miss telemetry, latency histograms, eviction rates, and memory utilization metrics. Provides the dashboards and alerts defined in OBSERVABILITY.md.")
+
+  Rel(webUser, cachingLayer, "Read requests via application layer", "HTTPS")
+  Rel(mobileUser, cachingLayer, "Read requests via application layer", "HTTPS")
+  Rel(internalConsumer, cachingLayer, "Service-to-service reads via shared cache client", "Internal network")
+
+  Rel(cachingLayer, originDatabase, "On cache miss: fetch authoritative data, then populate cache", "SQL / TCP")
+  Rel(messageBus, cachingLayer, "Publishes cache invalidation events on data change", "NATS / Kafka topic subscription")
+  Rel(identityProvider, cachingLayer, "Provides identity context used by application layer before cache access", "HTTPS / JWKS")
+  Rel(cachingLayer, observabilityPlatform, "Emits hit rate, latency, eviction rate, memory utilization", "OTLP / Prometheus scrape")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
