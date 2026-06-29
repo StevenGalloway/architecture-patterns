@@ -1,0 +1,38 @@
+C4Container
+  title Container Diagram — Caching System
+
+  Person(client, "Client / Calling Service", "Web user, mobile user, or internal microservice making a read request")
+
+  System_Ext(originDatabase, "Origin Database", "PostgreSQL / MySQL — authoritative data store, queried only on cache miss")
+  System_Ext(messageBus, "Message Bus", "NATS / Kafka — publishes cache.invalidation events on data change")
+  System_Ext(observabilityPlatform, "Observability Platform", "Prometheus + Grafana — receives hit rate, eviction rate, latency, and memory metrics")
+
+  System_Boundary(cachingSystem, "Caching System") {
+
+    Container(appL1, "Application Layer + L1 Cache", "In-process memory (LRU)", "Handles incoming requests. L1 cache is per-instance, stores up to ~10,000 entries, LRU eviction, TTL of 30-60 seconds. Cache hit returns in under 0.1ms without any network call.")
+
+    Container(cacheClient, "Cache Client Library", "Shared platform library", "Wraps all Redis operations. Enforces key namespace schema ({tenant_id}:{service}:{type}:{id}). Handles stampede protection via distributed lock (single writer acquires lock; others wait or serve stale). Manages serialization (MessagePack). Emits hit/miss/latency metrics. Encrypts PII fields before write, decrypts on read.")
+
+    Container(redisCluster, "Redis Cluster / L2 Cache", "Redis 7+ Cluster mode, AUTH + TLS", "Shared across all application instances. Default TTL: 5 minutes (warm tier). Cluster mode enabled for horizontal sharding beyond single-node memory limits. AUTH required; TLS enforced in transit. Memory quota enforced per namespace. Eviction policy: allkeys-lru.")
+
+    Container(invalidationSubscriber, "Invalidation Subscriber", "Background process / sidecar", "Subscribes to cache.invalidation topic on the message bus. On event receipt: evicts matching L1 entries in the local process, issues DEL to L2 Redis for affected keys using the key pattern in the event payload. Ensures cache is invalidated within seconds of the originating data change.")
+
+    Container(metricsExporter, "Cache Metrics Exporter", "Prometheus exporter", "Scrapes Redis INFO stats every 15 seconds. Exports: hit rate, miss rate, eviction rate, memory used/max, connected clients, keyspace size by namespace, replication lag. Powers the Cache Health and Stampede Detection dashboards in OBSERVABILITY.md.")
+
+  }
+
+  Rel(client, appL1, "Read request", "HTTP / internal function call")
+
+  Rel(appL1, cacheClient, "L1 miss: delegate to L2 lookup", "In-process call")
+  Rel(cacheClient, redisCluster, "L2 GET / SET / DEL", "Redis protocol, TLS, < 1ms p99")
+  Rel(redisCluster, originDatabase, "L2 miss: cache-aside fetch from origin", "SQL / TCP")
+
+  Rel(messageBus, invalidationSubscriber, "cache.invalidation events", "NATS subscription / Kafka consumer group")
+  Rel(invalidationSubscriber, appL1, "Evict L1 entries matching invalidation pattern", "In-process eviction")
+  Rel(invalidationSubscriber, redisCluster, "DEL matching keys in L2", "Redis DEL / pattern scan")
+
+  Rel(metricsExporter, redisCluster, "Scrapes Redis INFO every 15s", "Redis protocol")
+  Rel(metricsExporter, observabilityPlatform, "Exports Prometheus metrics", "HTTP /metrics scrape")
+  Rel(cacheClient, observabilityPlatform, "Emits per-operation hit/miss/latency spans", "OTLP / structured log")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
