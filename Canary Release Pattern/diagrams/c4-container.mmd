@@ -1,0 +1,42 @@
+C4Container
+  title Container Diagram — Canary Release System
+
+  Person(developer, "Developer", "Pushes new service version via CI/CD")
+
+  System_Ext(cicd, "CI/CD Pipeline", "Builds image, runs tests, triggers rollout with new image tag")
+  System_Ext(metricsPlatform, "Metrics Platform", "Prometheus — stores time-series for error rate, latency, saturation")
+  System_Ext(kubernetesAPI, "Kubernetes API Server", "Accepts resource updates from Rollout controller; schedules pods")
+  System_Ext(notificationSystem, "Notification System", "Slack / PagerDuty — delivers rollback alerts and promotion confirmations")
+
+  System_Boundary(canarySystem, "Canary Release System") {
+
+    Container(rolloutController, "Rollout Controller", "Argo Rollouts / Flagger", "Manages the progressive traffic weight schedule (5% → 20% → 50% → 100%). Initiates each analysis step. Executes promotion or rollback based on analysis results. Owns the state machine for the rollout lifecycle.")
+
+    Container(analysisRunner, "Analysis Runner", "Argo Rollouts AnalysisRun", "Executes the AnalysisTemplate at each canary step. Queries the Metrics Platform for error rate, p95 latency, and saturation metrics. Compares canary values against stable baseline. Returns pass or fail to the Rollout Controller.")
+
+    Container(trafficSplitter, "Traffic Splitter", "Ingress Controller (NGINX) / Service Mesh (Istio)", "Enforces the declared traffic weight by routing N% of requests to the canary pod set and (100-N)% to the stable pod set. Updated by the Rollout Controller at each step. Accuracy guaranteed to ±1% of declared weight.")
+
+    Container(stablePodSet, "Stable Pod Set", "Kubernetes Deployment — current production version", "Receives (100-N)% of production traffic during the canary window. Acts as the real-time control group for analysis metric comparison. Scaled to full replica count throughout the rollout.")
+
+    Container(canaryPodSet, "Canary Pod Set", "Kubernetes ReplicaSet — new version under evaluation", "Receives N% of production traffic per the current rollout step. Runs the new version being evaluated. Scaled to a replica count proportional to the current traffic weight.")
+
+    Container(rolloutConfigStore, "Rollout Config Store", "GitOps — ArgoCD / Flux", "Source of truth for Rollout manifests, AnalysisTemplates, and step configurations. Updated via PR process. Changes to AnalysisTemplate thresholds go through code review. Synced to the cluster on merge.")
+
+  }
+
+  Rel(developer, cicd, "Pushes new image, triggers deployment pipeline", "git push")
+  Rel(cicd, rolloutController, "Updates Rollout resource with new image tag", "kubectl apply / ArgoCD sync")
+  Rel(rolloutController, rolloutConfigStore, "Reads Rollout spec and AnalysisTemplate on each reconcile", "GitOps sync")
+
+  Rel(rolloutController, trafficSplitter, "Sets traffic weight at each step (5%, 20%, 50%, 100%)", "Kubernetes API — Ingress / VirtualService update")
+  Rel(rolloutController, analysisRunner, "Starts AnalysisRun at each step; waits for pass/fail result", "Kubernetes CRD")
+  Rel(rolloutController, kubernetesAPI, "Scales canary replica set, executes rollback if analysis fails", "Kubernetes API")
+  Rel(rolloutController, notificationSystem, "Sends promotion confirmation or rollback alert", "Webhook")
+
+  Rel(trafficSplitter, stablePodSet, "Routes (100-N)% of requests", "HTTP — Kubernetes Service")
+  Rel(trafficSplitter, canaryPodSet, "Routes N% of requests per current step weight", "HTTP — Kubernetes Service")
+
+  Rel(analysisRunner, metricsPlatform, "Queries error rate, p95 latency, CPU utilization for stable and canary pods", "PromQL over HTTPS")
+  Rel(analysisRunner, rolloutController, "Returns pass or fail with metric values and comparison results", "Kubernetes status update")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
