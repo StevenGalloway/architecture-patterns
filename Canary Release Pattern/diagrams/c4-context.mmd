@@ -1,0 +1,26 @@
+C4Context
+  title System Context — Canary Release System
+
+  Person(developer, "Developer", "Pushes new service version via CI/CD pipeline. Declares canary success criteria in service manifest. Receives rollback notifications.")
+  Person(sre, "SRE / On-Call", "Monitors active rollouts in canary dashboard. Can manually pause or abort a canary. Receives pages when automated rollback fails.")
+  Person(endUser, "End User", "Sends requests to the service during rollout. A subset of users receives canary traffic. Unaware of the canary deployment.")
+
+  System(canarySystem, "Canary Release System", "Progressive traffic splitting with automated analysis and rollback orchestration. Shifts traffic from 5% to 20% to 50% to 100% based on health and business metric signals.")
+
+  System_Ext(sourceControl, "Source Control / CI", "Triggers deployments when a new image is pushed. Provides the deployment event that initiates the canary rollout. (GitHub Actions, ArgoCD)")
+  System_Ext(metricsPlatform, "Metrics Platform", "Provides the time-series data the analysis engine queries. Stores error rates, latency histograms, CPU utilization, and custom business metrics for both stable and canary pods. (Prometheus + Thanos, Datadog)")
+  System_Ext(kubernetes, "Kubernetes / Container Orchestrator", "Executes the traffic weight changes declared by the Rollout controller. Schedules and runs stable and canary pod sets. Enforces resource policies.")
+  System_Ext(notificationSystem, "Notification System", "Delivers rollback alerts and promotion confirmations to service owner channels. Pages on-call when rollback automation fails. (Slack, PagerDuty)")
+  System_Ext(featureFlags, "Feature Flag Service", "Optional: enables user-based canary targeting (route specific user cohorts to canary independent of traffic weight). Used for AI model canaries and high-stakes rollouts. (LaunchDarkly, Unleash)")
+
+  Rel(developer, sourceControl, "Pushes new image, triggers deployment", "git push / CI pipeline")
+  Rel(endUser, canarySystem, "Sends production requests, routed to stable or canary", "HTTPS")
+  Rel(sre, canarySystem, "Monitors rollout status, intervenes if needed", "Canary dashboard / kubectl")
+
+  Rel(sourceControl, canarySystem, "Triggers canary rollout with new image tag", "Kubernetes API / ArgoCD sync")
+  Rel(canarySystem, metricsPlatform, "Queries error rate, latency, saturation metrics for analysis gates", "PromQL / Metrics API")
+  Rel(canarySystem, kubernetes, "Adjusts traffic weights, scales pod sets, executes rollback", "Kubernetes API")
+  Rel(canarySystem, notificationSystem, "Sends rollback alerts, step promotion confirmations", "Webhook / API")
+  Rel(canarySystem, featureFlags, "Reads user-based targeting rules for cohort-level canary", "HTTP API")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
