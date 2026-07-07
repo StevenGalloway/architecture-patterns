@@ -1,0 +1,42 @@
+C4Context
+  title System Context — CQRS Read Model Projection
+
+  Person(customer, "Customer", "Views personal order history, order status, and shipment tracking via mobile or web app")
+  Person(merchant, "Merchant", "Monitors fulfillment dashboard: open order counts by SKU and warehouse, updated every 30 seconds")
+  Person(biAnalyst, "BI Analyst", "Runs aggregate reports on order volume, revenue, and cancellation rates against the analytics store")
+  Person(backendEngineer, "Backend Engineer", "Issues commands (CreateOrder, UpdateOrderStatus, CancelOrder) through the command API")
+
+  System(commandService, "Command Service", "Accepts and validates write commands. Enforces domain invariants. Writes to the normalized write store and emits domain events on successful writes.")
+  System(projectorService, "Projector Service", "Consumes domain events from the event bus and maintains denormalized read models in purpose-built stores optimized for each consumer's access pattern.")
+  System(queryServiceHistory, "Query Service (Order History)", "Serves paginated, sorted, and filtered customer order history queries from the denormalized history read model.")
+  System(queryServiceFulfillment, "Query Service (Fulfillment)", "Serves real-time order count aggregates by SKU and warehouse from the Redis fulfillment cache.")
+  System(queryServiceAnalytics, "Query Service (Analytics)", "Serves aggregate analytics queries from the column-store analytics read model.")
+
+  System_Ext(eventBus, "Event Bus", "Durable, ordered event log for domain events. Kafka or AWS SNS/SQS. Retains events for 30 days to support read model replay and rebuild.")
+  System_Ext(writeStore, "Write Store", "PostgreSQL. Normalized, write-optimized schema. Source of truth for domain state. Never queried by the read side under normal operation.")
+  System_Ext(historyReadStore, "Customer History DB", "PostgreSQL. Denormalized order rows indexed for pagination, date sort, and status filter. Consumer: Query Service (Order History).")
+  System_Ext(fulfillmentCache, "Fulfillment Cache", "Redis. Precomputed open order counts keyed by SKU and warehouse. Sub-millisecond reads. Consumer: Query Service (Fulfillment).")
+  System_Ext(analyticsStore, "Analytics Store", "Columnar store (Redshift or equivalent). Aggregate-optimized. Full-table scans do not impact write or history read performance. Consumer: BI Analysts and Query Service (Analytics).")
+  System_Ext(observabilityPlatform, "Observability Platform", "Receives projection lag metrics, DLQ depth, event processing rates, and structured logs from the projector and query services. Primary operational signal for CQRS health.")
+
+  Rel(backendEngineer, commandService, "Issues commands", "HTTPS / gRPC")
+  Rel(customer, queryServiceHistory, "Queries order history", "HTTPS")
+  Rel(merchant, queryServiceFulfillment, "Views fulfillment dashboard", "HTTPS")
+  Rel(biAnalyst, queryServiceAnalytics, "Runs analytics reports", "HTTPS / SQL")
+
+  Rel(commandService, writeStore, "Writes normalized order state", "SQL / TLS")
+  Rel(commandService, eventBus, "Publishes signed domain events", "Kafka producer / SNS publish")
+
+  Rel(eventBus, projectorService, "Delivers domain events", "Kafka consumer / SQS receive")
+  Rel(projectorService, historyReadStore, "Upserts denormalized order history rows", "SQL / TLS")
+  Rel(projectorService, fulfillmentCache, "Increments and decrements order count keys", "Redis protocol / TLS")
+  Rel(projectorService, analyticsStore, "Inserts and updates aggregate analytics records", "JDBC / HTTPS")
+
+  Rel(queryServiceHistory, historyReadStore, "Reads paginated order history", "SQL / TLS")
+  Rel(queryServiceFulfillment, fulfillmentCache, "Reads precomputed counts", "Redis protocol / TLS")
+  Rel(queryServiceAnalytics, analyticsStore, "Reads aggregate data", "JDBC / HTTPS")
+
+  Rel(projectorService, observabilityPlatform, "Lag metrics, DLQ depth, processing rate, structured logs", "OTLP / stdout JSON")
+  Rel(commandService, observabilityPlatform, "Event publish rate, write latency, command error rate", "OTLP / stdout JSON")
+
+  UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="1")
