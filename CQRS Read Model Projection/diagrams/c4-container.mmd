@@ -1,0 +1,79 @@
+C4Container
+  title Container Diagram — CQRS Read Model Projection System
+
+  Person(customer, "Customer", "Views order history via mobile or web")
+  Person(merchant, "Merchant", "Views fulfillment dashboard")
+  Person(biAnalyst, "BI Analyst", "Runs analytics reports")
+  Person(backendEngineer, "Backend Engineer", "Issues write commands")
+
+  System_Ext(eventBus, "Event Bus", "Kafka or AWS SNS/SQS. Ordered, durable event log. 30-day retention for replay.")
+
+  System_Boundary(cqrsSystem, "CQRS Read Model Projection System") {
+
+    Container(commandHandler, "Command Handler", "Node.js / Java / Go", "Validates incoming commands (CreateOrder, UpdateOrderStatus, CancelOrder). Enforces domain invariants. Writes to Write Database. Publishes signed domain events to Event Bus on commit. Stateless; horizontally scalable.")
+
+    Container(writeDatabase, "Write Database", "PostgreSQL", "Normalized, write-optimized order schema. Single source of truth for domain state. Never queried by read-side services under normal operation. Indexed for write performance, not read patterns.")
+
+    Container(eventPublisher, "Event Publisher", "Transactional Outbox / Direct Publish", "Guarantees at-least-once event delivery to the Event Bus. Uses transactional outbox pattern to ensure events are not lost if the broker is temporarily unavailable. Signs events with HMAC-SHA256 before publishing.")
+
+    Container(projectorHistory, "Projector (Order History)", "Node.js / Python", "Consumes OrderCreated, OrderStatusUpdated, OrderCancelled events. Builds and maintains denormalized order rows in Customer History DB. Handles idempotency via Idempotency Store. Consumer group: history-team.history-projector.v2")
+
+    Container(projectorFulfillment, "Projector (Fulfillment)", "Node.js / Python", "Consumes OrderCreated, OrderStatusUpdated, OrderCancelled events. Increments and decrements open order counts by SKU and warehouse in Fulfillment Cache. Consumer group: fulfillment-team.fulfillment-projector.v2")
+
+    Container(projectorAnalytics, "Projector (Analytics)", "Node.js / Python", "Consumes all order event types. Maintains aggregate analytics records in Analytics Store. Runs on a separate consumer group with higher lag tolerance. Consumer group: bi-team.analytics-projector.v1")
+
+    Container(customerHistoryDB, "Customer History DB", "PostgreSQL (Aurora)", "Denormalized order rows. Indexed by customer_id, created_at DESC, status. Optimized for paginated list queries under 100ms p99. Schema owned by Customer Experience team.")
+
+    Container(fulfillmentCache, "Fulfillment Cache", "Redis (ElastiCache)", "Hash keys per SKU and warehouse: open_order_count, in_transit_count. Sub-millisecond reads. TTL-managed. Schema owned by Fulfillment Operations team.")
+
+    Container(analyticsStore, "Analytics Store", "Amazon Redshift", "Columnar schema. Aggregate-optimized. Supports full-table scans and GROUP BY without impacting write or history read performance. Schema owned by BI team.")
+
+    Container(idempotencyStore, "Idempotency Store", "Redis", "Stores processed event IDs with TTL (default: 7 days). Prevents duplicate writes to read model stores when the event bus redelivers events after consumer group rebalance or projector restart. Shared across all projectors.")
+
+    Container(replayController, "Replay Controller", "Node.js / Go", "Orchestrates read model rebuild from historical event stream. Reads events from Event Bus from a given offset or timestamp. Writes to a shadow read model store. Requires two-principal approval before cutover. Exposes control plane API for platform team tooling.")
+
+    Container(queryServiceHistory, "Query Service (Order History)", "Node.js / Express", "Serves customer-facing order history queries. Reads exclusively from Customer History DB. Handles pagination, sort, and status filtering. Returns data-freshness header with read model last-updated timestamp.")
+
+    Container(queryServiceFulfillment, "Query Service (Fulfillment)", "Node.js / Express", "Serves merchant fulfillment dashboard queries. Reads exclusively from Fulfillment Cache. Aggregates Redis keys into dashboard response. 30-second client-side refresh supported without write database contention.")
+
+    Container(queryServiceAnalytics, "Query Service (Analytics)", "Python / FastAPI", "Serves BI analytics queries. Reads exclusively from Analytics Store. Supports complex GROUP BY and time-series queries. Runs in an isolated compute tier so analytics queries cannot impact other query services.")
+
+  }
+
+  System(observability, "Observability Platform", "Prometheus + Grafana + structured logs. Receives lag metrics, DLQ depth, event processing rates, and read model write latencies from all projectors.")
+
+  Rel(backendEngineer, commandHandler, "POST /commands/orders", "HTTPS / gRPC")
+  Rel(customer, queryServiceHistory, "GET /orders?customer_id=x", "HTTPS")
+  Rel(merchant, queryServiceFulfillment, "GET /dashboard/fulfillment", "HTTPS")
+  Rel(biAnalyst, queryServiceAnalytics, "GET /analytics/orders", "HTTPS / SQL")
+
+  Rel(commandHandler, writeDatabase, "INSERT / UPDATE order records", "SQL, TLS")
+  Rel(commandHandler, eventPublisher, "Delegate event emission after commit", "In-process / Outbox table")
+  Rel(eventPublisher, eventBus, "Publish signed OrderCreated / OrderStatusUpdated / OrderCancelled", "Kafka produce / SNS publish")
+
+  Rel(eventBus, projectorHistory, "Deliver order events", "Kafka consume / SQS receive")
+  Rel(eventBus, projectorFulfillment, "Deliver order events", "Kafka consume / SQS receive")
+  Rel(eventBus, projectorAnalytics, "Deliver order events", "Kafka consume / SQS receive")
+  Rel(eventBus, replayController, "Read historical event stream for replay", "Kafka consumer from offset")
+
+  Rel(projectorHistory, idempotencyStore, "Check and record event_id before processing", "Redis GET/SET, <1ms")
+  Rel(projectorFulfillment, idempotencyStore, "Check and record event_id before processing", "Redis GET/SET, <1ms")
+  Rel(projectorAnalytics, idempotencyStore, "Check and record event_id before processing", "Redis GET/SET, <1ms")
+
+  Rel(projectorHistory, customerHistoryDB, "UPSERT denormalized order rows", "SQL, TLS")
+  Rel(projectorFulfillment, fulfillmentCache, "INCR / DECR order count keys", "Redis protocol, TLS")
+  Rel(projectorAnalytics, analyticsStore, "INSERT / UPDATE aggregate records", "JDBC / HTTPS")
+
+  Rel(replayController, customerHistoryDB, "Write replay events to shadow schema", "SQL, TLS")
+  Rel(replayController, fulfillmentCache, "Write replay events to shadow key namespace", "Redis protocol, TLS")
+  Rel(replayController, analyticsStore, "Write replay events to shadow schema", "JDBC / HTTPS")
+
+  Rel(queryServiceHistory, customerHistoryDB, "SELECT paginated order rows", "SQL, TLS")
+  Rel(queryServiceFulfillment, fulfillmentCache, "GET order count keys by SKU and warehouse", "Redis protocol, TLS")
+  Rel(queryServiceAnalytics, analyticsStore, "SELECT aggregate data", "JDBC / HTTPS")
+
+  Rel(projectorHistory, observability, "lag_ms, processing_errors, dlq_depth, event_rate", "OTLP / stdout JSON")
+  Rel(projectorFulfillment, observability, "lag_ms, processing_errors, dlq_depth, event_rate", "OTLP / stdout JSON")
+  Rel(projectorAnalytics, observability, "lag_ms, processing_errors, dlq_depth, event_rate", "OTLP / stdout JSON")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
