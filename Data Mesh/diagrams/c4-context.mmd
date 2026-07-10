@@ -1,0 +1,29 @@
+C4Context
+  title Data Mesh Platform — System Context
+
+  Person(domainOwner, "Domain Data Owner", "Manages data products for their domain: ingestion, transformation, quality, SLOs, on-call")
+  Person(consumer, "Data Consumer", "Analyst, data scientist, or domain team consuming data products via declared contracts")
+  Person(platformEngineer, "Platform Engineer", "Maintains data platform infrastructure, tooling, governance automation, and catalog")
+  Person(governanceOfficer, "Data Governance Officer", "Sets enterprise data standards, PII policies, and semantic conventions; reviews compliance")
+
+  System(dataMeshPlatform, "Data Mesh Platform", "Federated data product ownership with centralized governance, catalog, lineage, and quality infrastructure. Domain teams own data products; platform enforces standards.")
+
+  System_Ext(sourceOperational, "Source Operational Systems", "Domain databases, event streams, and application APIs — where raw data originates. Each domain's operational systems are the source of truth for that domain's data products.")
+  System_Ext(dataWarehouse, "Data Warehouse / Lakehouse", "Snowflake, BigQuery, or Databricks. Provides compute for transformations and storage for published data products.")
+  System_Ext(dataCatalog, "Data Catalog", "DataHub, Collibra, or Atlan. Discovery, documentation, ownership metadata, and field-level lineage for all published data products.")
+  System_Ext(lineageService, "Lineage Service", "OpenLineage / Marquez. Captures input and output datasets for every pipeline run. Enables cross-domain impact analysis and GDPR erasure tracing.")
+  System_Ext(cicdSystem, "CI/CD System", "GitHub Actions or equivalent. Enforces governance gates: PII tagging, schema contract validation, credential scanning, policy-as-code checks before any data product deploys.")
+  System_Ext(biTools, "BI Tools", "Looker, Tableau, or Power BI. Business intelligence consumers query published data products via the warehouse.")
+
+  Rel(domainOwner, dataMeshPlatform, "Publishes and operates data products via manifest, pipeline code, and self-service portal")
+  Rel(consumer, dataMeshPlatform, "Discovers data products in catalog and queries them via declared access contracts")
+  Rel(platformEngineer, dataMeshPlatform, "Maintains platform infrastructure, tooling, and governance automation")
+  Rel(governanceOfficer, dataMeshPlatform, "Defines standards and reviews compliance reports")
+
+  Rel(sourceOperational, dataMeshPlatform, "Provides raw source data ingested by domain-owned pipelines")
+  Rel(dataMeshPlatform, dataWarehouse, "Executes transformations and stores published data product tables")
+  Rel(dataMeshPlatform, dataCatalog, "Registers data product metadata, schema, owner, SLOs, and access policy on deploy")
+  Rel(dataMeshPlatform, lineageService, "Emits lineage events for every pipeline run")
+  Rel(cicdSystem, dataMeshPlatform, "Runs governance gates before data product deployment; blocks non-compliant products")
+  Rel(consumer, biTools, "Builds reports and dashboards")
+  Rel(biTools, dataMeshPlatform, "Queries published data products in the warehouse")
