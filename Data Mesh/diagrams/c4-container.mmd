@@ -1,0 +1,52 @@
+C4Container
+  title Data Mesh Platform — Container Diagram
+
+  Person(domainOwner, "Domain Data Owner", "Owns data products for their domain end-to-end")
+  Person(consumer, "Data Consumer", "Analyst, data scientist, or other domain team consuming data products")
+
+  System_Boundary(dataMeshPlatform, "Data Mesh Platform") {
+    Container(dataProductRegistry, "Data Product Registry", "DataHub / Atlan / Collibra", "Catalog of all published data products with contracts, owners, SLOs, quality scores, and access policies. Discovery interface for consumers.")
+    Container(pipelineEngine, "Pipeline Execution Engine", "dbt + Airflow / Prefect", "Runs domain-owned transformation code on schedule. Executes dbt models against the data warehouse. Triggers quality gate after each run.")
+    Container(qualityGate, "Data Quality Gate", "Great Expectations / Soda Core", "Runs quality checks on every pipeline refresh: completeness, row count delta, null rates, custom domain tests. Blocks data product publish if thresholds are not met. Notifies consumers on failure.")
+    Container(lineageTracker, "Lineage Tracker", "OpenLineage API + Marquez", "Captures input and output datasets for every pipeline run. Enables cross-domain impact analysis. Supports GDPR erasure tracing by identifying all downstream products containing a data subject's records.")
+    Container(accessControlLayer, "Access Control Layer", "Warehouse RBAC + Policy Engine", "Manages row-level and column-level security per data product. Processes consumer access requests. Provisions warehouse roles within 5 minutes of approval. Enforces data classification policies.")
+    Container(governanceAutomation, "Governance Automation", "CI/CD Gates + Policy-as-Code", "Validates data product manifests, PII tagging completeness, schema contract format, and credential absence before any deploy. Blocks non-compliant data products. Integrates with GitHub Actions or equivalent CI system.")
+    Container(selfServicePortal, "Self-Service Portal", "Web Application", "Domain teams create and manage data products via manifest UI. Consumers browse the catalog, view SLOs and quality scores, and submit access requests. Data product owners approve or decline access.")
+  }
+
+  System_Ext(sourceDatabases, "Source Operational Databases", "Domain operational systems: PostgreSQL, MySQL, event streams (Kafka), application APIs. Raw data origin for domain pipelines.")
+  System_Ext(dataWarehouse, "Data Warehouse / Lakehouse", "Snowflake, BigQuery, or Databricks. Stores published data product tables. Executes transformation compute. Enforces warehouse-level RBAC provisioned by the access control layer.")
+  System_Ext(biTools, "BI Tools", "Looker, Tableau, Power BI. Query published data products via warehouse connection. Subject to access control layer permissions.")
+  System_Ext(cicdSystem, "CI/CD System", "GitHub Actions. Runs governance automation gates on every push to a data product repository. Orchestrates deploy pipeline.")
+  System_Ext(observabilityPlatform, "Observability Platform", "Datadog, Grafana, or equivalent. Receives pipeline run events, quality check results, SLO metrics, and warehouse credit utilization. Powers data product health dashboards and SLO compliance reporting.")
+
+  Rel(domainOwner, selfServicePortal, "Creates data products, manages manifests, approves consumer access requests")
+  Rel(consumer, selfServicePortal, "Discovers data products, views contracts and SLOs, submits access requests")
+  Rel(consumer, dataWarehouse, "Queries published data product tables after access is provisioned", "SQL / BI connector")
+
+  Rel(selfServicePortal, dataProductRegistry, "Registers and updates data product metadata on publish")
+  Rel(selfServicePortal, accessControlLayer, "Forwards approved access requests for warehouse role provisioning")
+
+  Rel(cicdSystem, governanceAutomation, "Invokes PII detection, schema validation, and policy-as-code gates on push")
+  Rel(governanceAutomation, pipelineEngine, "Triggers deployment to pipeline execution engine after all gates pass")
+
+  Rel(pipelineEngine, sourceDatabases, "Ingests raw source data on schedule")
+  Rel(pipelineEngine, dataWarehouse, "Executes dbt transformations; writes to data product tables")
+  Rel(pipelineEngine, qualityGate, "Invokes quality checks after each transformation run")
+  Rel(pipelineEngine, lineageTracker, "Emits OpenLineage events for each pipeline run with input and output datasets")
+
+  Rel(qualityGate, dataProductRegistry, "Updates quality scores and last-refresh status in catalog")
+  Rel(qualityGate, observabilityPlatform, "Sends quality check results and SLO breach events")
+  Rel(qualityGate, consumer, "Notifies registered consumers when quality gate fails on a product they access")
+
+  Rel(lineageTracker, dataProductRegistry, "Provides lineage graph for each data product's catalog entry")
+  Rel(lineageTracker, observabilityPlatform, "Streams lineage events for cross-domain impact analysis")
+
+  Rel(accessControlLayer, dataWarehouse, "Provisions and revokes warehouse RBAC roles per data product access policy")
+  Rel(accessControlLayer, observabilityPlatform, "Logs access provisioning events and quarterly review triggers")
+
+  Rel(governanceAutomation, dataProductRegistry, "Creates initial catalog entry on first successful deploy")
+  Rel(cicdSystem, governanceAutomation, "Passes data-product.yaml manifest and pipeline code for validation")
+
+  Rel(biTools, dataWarehouse, "Queries data product tables")
+  Rel(pipelineEngine, observabilityPlatform, "Sends pipeline run duration, scheduling lag, and failure events")
