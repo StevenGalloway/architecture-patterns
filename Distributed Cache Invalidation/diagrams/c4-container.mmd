@@ -1,0 +1,45 @@
+C4Container
+  title Container Diagram — Distributed Cache Invalidation System
+
+  Person(endUser, "End User", "Requests product data via the API fleet")
+
+  System_Boundary(apiInstance, "API Instance (one of N instances)") {
+
+    Container(httpHandler, "HTTP Request Handler", "Node.js / Express", "Receives inbound HTTP requests. Orchestrates the cache lookup sequence: L1 check → L2 check → origin query on miss. Returns response to client.")
+
+    Container(l1Cache, "L1 Cache", "In-process LRU map (per instance)", "In-memory key-value store local to each API instance. Max 10,000 entries. 60-second TTL. Sub-millisecond read latency. Evicted on invalidation event receipt.")
+
+    Container(cacheClientLib, "Cache Client Library", "Platform library (Node.js)", "Constructs canonical cache keys (env:tenant:version:entity:id). Implements stampede protection (single-flight). Coordinates L1 hit → L2 hit → origin miss sequence. Emits invalidation and eviction metrics to observability platform.")
+
+    Container(invalidationSubscriber, "Invalidation Subscriber", "NATS JetStream consumer (durable)", "Maintains a persistent subscription to the cache.invalidation.* subject namespace. On event receipt: evicts matching keys from L1, issues Redis DEL for L2, acknowledges message to NATS only after eviction completes. Replays missed events on reconnect via JetStream durable consumer.")
+
+  }
+
+  System_Boundary(sharedInfra, "Shared Infrastructure") {
+
+    Container(redisCluster, "Redis Cluster", "Redis 7, cluster mode (r7g.large)", "L2 shared cache accessible by all API instances. Max 500,000 entries. 5-minute TTL as safety net. Receives DEL commands from each instance's invalidation subscriber on event receipt. TLS + AUTH required.")
+
+    Container(natsJetStream, "NATS JetStream", "NATS 2.10, 3-node cluster", "Durable pub/sub message broker. Subject: cache.invalidation.{entity_type}. Consumer group: one per service fleet. Stores up to 24 hours of messages for replay. Guarantees at-least-once delivery to all active consumers.")
+
+  }
+
+  System_Ext(writeService, "Write Service", "Publishes invalidation events synchronously after writing to origin. Event payload: {event_type, entity_type, entity_id, keys[], published_at}")
+  System_Ext(originDatabase, "Origin Database", "PostgreSQL — queried on cache miss. Single source of truth.")
+  System_Ext(observabilityPlatform, "Observability Platform", "Prometheus + Grafana. Receives consumer lag, propagation latency, eviction counts, publish failure rate from the cache client library and invalidation subscriber.")
+
+  Rel(endUser, httpHandler, "GET /products/:id", "HTTPS")
+  Rel(httpHandler, l1Cache, "Lookup key (hit: return immediately)", "In-process, <0.1ms")
+  Rel(httpHandler, cacheClientLib, "cache.get(key) on L1 miss", "In-process")
+  Rel(cacheClientLib, redisCluster, "GET key (L2 lookup on L1 miss)", "Redis protocol, TLS, 1-3ms")
+  Rel(cacheClientLib, originDatabase, "SQL query on L2 miss", "TCP, private subnet")
+  Rel(cacheClientLib, l1Cache, "cache.set(key, value) after origin load", "In-process")
+  Rel(cacheClientLib, redisCluster, "SET key value EX 300 after origin load", "Redis protocol, TLS")
+  Rel(cacheClientLib, observabilityPlatform, "Metrics: hit rate, miss rate, latency histograms", "Prometheus")
+
+  Rel(writeService, natsJetStream, "PUBLISH cache.invalidation.product {keys:[...]}", "NATS protocol, TLS")
+  Rel(natsJetStream, invalidationSubscriber, "PUSH invalidation event to all active consumers", "NATS JetStream push consumer, per-instance")
+  Rel(invalidationSubscriber, l1Cache, "Evict matching keys from L1", "In-process, synchronous")
+  Rel(invalidationSubscriber, redisCluster, "DEL keys from L2", "Redis protocol, TLS, pipelined")
+  Rel(invalidationSubscriber, observabilityPlatform, "Consumer lag, propagation latency, eviction results", "Prometheus + structured logs")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
