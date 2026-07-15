@@ -1,0 +1,25 @@
+C4Context
+  title System Context — Distributed Cache Invalidation
+
+  Person(endUser, "End User", "Receives consistent product data — price, availability, catalog — regardless of which API instance handles their request")
+  Person(opsEngineer, "Operations Engineer", "Monitors invalidation pipeline health: consumer lag, propagation latency, stale data alerts, NATS infrastructure")
+
+  System(cacheInvalidationSystem, "Distributed Cache Invalidation System", "Ensures all API instances serve consistent data by propagating cache eviction events across the fleet within <1 second of a data change")
+
+  System_Ext(originDatabase, "Origin Database", "PostgreSQL — authoritative source of truth for product data. Queried on cache miss after invalidation evicts a stale key.")
+  System_Ext(writeService, "Write Service", "Updates product data in the origin database (price changes, inventory updates, catalog edits) and publishes invalidation events on every data mutation")
+  System_Ext(messageBus, "Message Bus", "NATS JetStream — durable pub/sub for invalidation events. Guarantees at-least-once delivery to all consumer instances. Replays missed events after consumer reconnect.")
+  System_Ext(apiInstances, "API Instances (fleet of 8)", "Horizontally scaled API instances. Each maintains an L1 in-process cache (10K entries, 60s TTL) and shares an L2 Redis cache (500K entries, 5-min TTL). All instances receive and process invalidation events simultaneously.")
+  System_Ext(observabilityPlatform, "Observability Platform", "Collects invalidation metrics: consumer lag per instance, propagation latency p99, publish failure rate, synthetic coherence probe results. (Prometheus + Grafana)")
+
+  Rel(endUser, apiInstances, "HTTP requests — product lookups, pricing, availability", "HTTPS")
+  Rel(writeService, originDatabase, "Writes data changes (price updates, inventory changes)", "SQL over TLS")
+  Rel(writeService, messageBus, "Publishes invalidation events synchronously on write completion", "NATS publish, JSON payload")
+  Rel(messageBus, apiInstances, "Delivers invalidation events to all consumer instances", "NATS JetStream push consumer")
+  Rel(apiInstances, originDatabase, "Queries on cache miss after key eviction", "SQL over TLS, private subnet")
+  Rel(apiInstances, observabilityPlatform, "Consumer lag, propagation latency, eviction counts, publish failure rate", "Prometheus metrics + structured logs")
+  Rel(opsEngineer, observabilityPlatform, "Monitors invalidation pipeline health dashboards and alerts", "HTTPS")
+  Rel(cacheInvalidationSystem, messageBus, "Uses as the event delivery backbone", "")
+  Rel(cacheInvalidationSystem, apiInstances, "Coordinates L1 + L2 eviction across all instances", "")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
