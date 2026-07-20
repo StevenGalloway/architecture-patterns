@@ -1,0 +1,26 @@
+C4Context
+  title Event Sourcing — C4 Context Diagram
+
+  Person(commandUser, "Command API User", "Developer or upstream system that issues commands (e.g., OpenAccount, DepositMoney). Initiates all write-path operations.")
+  Person(queryUser, "Query API User", "Analyst, internal application, or customer-facing service that reads current state from projected read models.")
+  Person(opsEngineer, "Ops Engineer", "Triggers replay and backfill operations, monitors projection health, manages snapshots and archival.")
+
+  System(eventSourcingSystem, "Event Sourcing System", "Stores all business facts as an immutable, append-only sequence of events. Derives current state by replaying events through projections. Provides full audit history and temporal query capability.")
+
+  System_Ext(identityProvider, "Identity Provider", "Issues and validates JWTs for command and query API authentication. Controls who may issue commands to which aggregate types.")
+  System_Ext(messageBroker, "Message Broker (Kafka / Kinesis)", "Receives published events from the event store for downstream consumption. Downstream services build their own read models from this feed without accessing the event store directly.")
+  System_Ext(schemaRegistry, "Schema Registry", "Stores and validates event schemas. Every event type is registered with a versioned schema. The event store validates incoming events against the registry before storage.")
+  System_Ext(observabilityPlatform, "Observability Platform", "Collects metrics (projection lag, OCC conflicts, write latency), structured logs (event append operations, projection errors), and distributed traces across the write and read paths.")
+  System_Ext(archivalStorage, "Archival Storage (S3 / Glacier)", "Long-term cold storage for events older than 90 days. Satisfies 7-year regulatory retention requirements at a fraction of hot storage cost. Replay jobs can read from archival storage for full historical replays.")
+
+  Rel(commandUser, eventSourcingSystem, "Issues commands via HTTPS", "REST / gRPC")
+  Rel(queryUser, eventSourcingSystem, "Queries read models via HTTPS", "REST / gRPC")
+  Rel(opsEngineer, eventSourcingSystem, "Triggers replays, monitors projections", "Admin API / CLI")
+
+  Rel(eventSourcingSystem, identityProvider, "Validates identity tokens", "JWKS / OAuth 2.0")
+  Rel(eventSourcingSystem, messageBroker, "Publishes committed events for downstream consumers", "Async / event stream")
+  Rel(eventSourcingSystem, schemaRegistry, "Validates event schemas on append", "Schema validation API")
+  Rel(eventSourcingSystem, observabilityPlatform, "Emits metrics, logs, and traces", "OTLP / StatsD")
+  Rel(eventSourcingSystem, archivalStorage, "Archives events older than 90 days; reads for full historical replay", "S3 API")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
