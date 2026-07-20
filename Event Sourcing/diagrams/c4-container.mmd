@@ -1,0 +1,55 @@
+C4Container
+  title Event Sourcing — C4 Container Diagram
+
+  Person(commandUser, "Command API User", "Issues commands that trigger state changes")
+  Person(queryUser, "Query API User", "Reads current state from projected read models")
+  Person(opsEngineer, "Ops Engineer", "Triggers replays and monitors projection health")
+
+  System_Ext(identityProvider, "Identity Provider", "JWT issuance and validation")
+  System_Ext(messageBroker, "Message Broker (Kafka)", "Downstream event consumers build their own read models from this feed")
+  System_Ext(observabilityPlatform, "Observability Platform", "Metrics, logs, distributed traces")
+
+  System_Boundary(eventSourcingBoundary, "Event Sourcing System") {
+
+    Container(commandHandler, "Command Handler / Aggregate Service", "Python / FastAPI", "Receives commands, loads aggregate state (from snapshot + events), validates invariants, appends new events to the event store. Enforces optimistic concurrency via expected_version check. Only component with write access to the event store.")
+
+    Container(schemaRegistry, "Schema Registry", "Confluent / AWS Glue", "Stores versioned schemas for every event type. Validates incoming events on append — rejects events that do not match a registered schema version. Enforces backward-compatibility rules on schema updates.")
+
+    ContainerDb(eventStore, "Event Store", "PostgreSQL (append-only) / EventStoreDB", "The system of record. Stores all events as an immutable, ordered sequence. Write path: INSERT only, no UPDATE or DELETE. Provides streaming subscription and replay API for projectors and replay jobs.")
+
+    ContainerDb(snapshotStore, "Snapshot Store", "PostgreSQL / S3", "Stores periodic snapshots of aggregate state to speed rehydration. A snapshot at version N allows rehydration to replay only events N+1 onward, rather than from event zero. Snapshot frequency is configurable per aggregate type.")
+
+    Container(projectionEngine, "Projection Engine", "Python / asyncio worker", "Consumes events from the event store in order, applies event handlers, and writes to the read model store. Maintains a checkpoint (last processed event position) for fault-tolerant resumption. One projector per read model.")
+
+    ContainerDb(readModelStore, "Read Model Store", "PostgreSQL / Redis", "Query-optimized projections of aggregate state. Serves the Query API. Updated asynchronously by the projection engine. May be stale by up to the projection lag SLO (p95 < 60 seconds).")
+
+    Container(queryApi, "Query API", "Python / FastAPI", "Serves read requests from the read model store. Enforces authentication (JWT validation) and tenant-scoped data access. Never queries the raw event store — all reads go through projections.")
+
+    Container(replayController, "Replay Controller", "Python / CLI", "Ops tooling for triggering and monitoring replay operations. Reads the event store (or archival storage) and replays events through a projector into an isolated read model. Requires elevated access. All operations are logged.")
+
+  }
+
+  Rel(commandUser, commandHandler, "Issues commands", "HTTPS / REST")
+  Rel(queryUser, queryApi, "Queries read models", "HTTPS / REST")
+  Rel(opsEngineer, replayController, "Triggers replay operations", "Admin API / CLI")
+
+  Rel(commandHandler, identityProvider, "Validates command issuer JWT", "JWKS")
+  Rel(commandHandler, schemaRegistry, "Validates event schema before append", "Schema API")
+  Rel(commandHandler, eventStore, "Appends events (INSERT only)", "SQL / EventStore API")
+  Rel(commandHandler, snapshotStore, "Reads latest snapshot for aggregate rehydration", "SQL / S3 API")
+
+  Rel(projectionEngine, eventStore, "Reads events in order from checkpoint", "Streaming subscription / SQL")
+  Rel(projectionEngine, readModelStore, "Writes projected state", "SQL / Redis")
+  Rel(projectionEngine, observabilityPlatform, "Emits projection lag, error rate, checkpoint position", "OTLP")
+
+  Rel(queryApi, identityProvider, "Validates query caller JWT", "JWKS")
+  Rel(queryApi, readModelStore, "Reads projected state", "SQL / Redis")
+
+  Rel(replayController, eventStore, "Reads full event history for replay", "SQL / EventStore API")
+  Rel(replayController, readModelStore, "Writes to isolated replay read model", "SQL")
+
+  Rel(eventStore, messageBroker, "Publishes committed events to downstream consumers", "Kafka producer / Kinesis")
+  Rel(commandHandler, observabilityPlatform, "Emits write latency, OCC conflicts, schema failures", "OTLP")
+  Rel(queryApi, observabilityPlatform, "Emits query latency, error rate", "OTLP")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
