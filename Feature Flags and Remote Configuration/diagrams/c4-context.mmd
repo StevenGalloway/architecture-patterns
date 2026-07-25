@@ -1,0 +1,26 @@
+C4Context
+  title Feature Flag Platform — System Context
+
+  Person(featureEngineer, "Feature Team Engineer", "Creates and manages flags for their service. Configures targeting rules, sets TTL and safe defaults, monitors variant distribution.")
+  Person(productManager, "Product Manager", "Manages experiment flags. Defines A/B test cohorts. Reviews experiment results and decides winning variant.")
+  Person(onCallEngineer, "On-Call Engineer", "Operates kill switches during incidents. Disables failing features without a code deploy. Pre-provisioned access before incidents occur.")
+
+  System(flagPlatform, "Feature Flag Platform", "Manages flag definitions, targeting rules, and remote configuration. Distributes flag state to connected SDK instances via SSE. Records every change in an immutable audit log.")
+
+  System_Ext(identityProvider, "Identity Provider", "Authenticates management plane users. Provides RBAC group membership for flag write/admin access control.")
+  System_Ext(applicationServices, "Application Services", "Production services that evaluate flags at runtime using the embedded in-process SDK. Evaluation is local — no network call per flag check.")
+  System_Ext(observabilityPlatform, "Observability Platform", "Receives structured flag evaluation events (sampled). Hosts dashboards for variant distribution, SDK cache staleness, and kill switch propagation. Receives audit log export for SIEM.")
+  System_Ext(analyticsPlatform, "Analytics Platform", "Receives evaluation event stream for experiment result analysis. Computes statistical significance for A/B test variants. Provides model quality metrics for AI model experiments.")
+  System_Ext(secretsManager, "Secrets Manager", "Stores SDK API keys for each environment. Application services retrieve SDK keys at startup. Keys are rotated quarterly without application redeployment.")
+
+  Rel(featureEngineer, flagPlatform, "Creates flags, configures targeting rules, monitors lifecycle", "HTTPS / Management UI")
+  Rel(productManager, flagPlatform, "Manages experiment flags, views variant distribution", "HTTPS / Management UI")
+  Rel(onCallEngineer, flagPlatform, "Activates kill switches during incidents", "HTTPS / Management UI or API")
+
+  Rel(flagPlatform, identityProvider, "Validates management plane authentication, resolves RBAC roles", "HTTPS / OIDC")
+  Rel(flagPlatform, observabilityPlatform, "Exports audit log records, emits flag change events", "HTTPS / Log pipeline")
+  Rel(flagPlatform, analyticsPlatform, "Streams evaluation events for experiment analysis", "HTTPS / Event stream")
+
+  Rel(applicationServices, flagPlatform, "Seeds SDK cache on startup; receives flag updates via SSE", "HTTPS / SSE")
+  Rel(applicationServices, secretsManager, "Retrieves SDK API key on startup", "HTTPS")
+  Rel(applicationServices, observabilityPlatform, "Emits structured flag evaluation events (sampled)", "HTTPS / Metrics")

@@ -1,0 +1,41 @@
+C4Container
+  title Feature Flag Platform — Container Diagram
+
+  System_Ext(applicationServices, "Application Services", "Production services embedding the in-process SDK. Evaluate flags locally against in-process cache. Emit structured evaluation events.")
+  System_Ext(observabilityPlatform, "Observability Platform", "Receives audit log records and flag evaluation metrics. Hosts variant distribution dashboards and SDK staleness alerts.")
+  System_Ext(analyticsPlatform, "Analytics Platform", "Receives evaluation event stream. Computes A/B test significance and model quality metrics.")
+
+  System_Boundary(flagSystem, "Feature Flag Platform") {
+
+    Container(managementUI, "Management UI", "React SPA", "Web interface for flag CRUD, targeting rule configuration, variant preview (dry-run), lifecycle dashboard, and kill switch operation. Consumed by engineers, product managers, and on-call responders.")
+
+    Container(managementAPI, "Management API", "Node.js / REST", "Authoritative API for flag definitions, targeting rules, and remote configuration values. Enforces RBAC (Reader/Writer/Admin). Validates PII exclusion in targeting rules. Validates JSON Schema on remote config writes. Writes all changes to Flag Config Store and Audit Log Store. Publishes flag state updates to SSE Push Service.")
+
+    Container(flagConfigStore, "Flag Config Store", "PostgreSQL", "Source of truth for all flag definitions, targeting rule sets, variant values, TTL metadata, owner assignments, and safe defaults. Insert-only flag history table. Queried by Management API and used to seed Flag State Cache on startup.")
+
+    Container(auditLogStore, "Audit Log Store", "PostgreSQL / S3 Object Lock", "Write-once record of every flag change. Each record contains: eventId, timestamp, actorType, actorId, actorIp, action, flagKey, previousValue, newValue, changeReason. Exported to observability SIEM within 24 hours. Immutable — no UPDATE or DELETE paths exist in the data model.")
+
+    Container(sseService, "SSE Push Service", "Node.js / HTTP SSE", "Maintains persistent Server-Sent Events connections to all connected SDK instances. Receives flag state change notifications from Management API. Broadcasts updated flag state to all connected clients within the 5-second propagation SLO. Reads current flag state from Flag State Cache for new connection seeding.")
+
+    Container(flagStateCache, "Flag State Cache", "Redis", "Hot cache of current flag state keyed by flag key and environment. Serves as the broadcast source for SSE push events. Seeded from Flag Config Store on startup and on each Management API write. SDK instances seed their in-process cache from this via the SSE stream, not by querying it directly.")
+
+    Container(sdk, "SDK (In-Process Library)", "Go / Java / Python / Node library", "Embedded in each Application Service instance. On startup: fetches all flag state via SSE connection, seeds in-process cache. Per-request evaluation: evaluates targeting rules against user/tenant context entirely in-process (no network call). Applies targeting rule evaluation order: explicit override → tenant rule → cohort → percentage rollout → environment default → global default. On cache miss or management API unavailability: returns flag safeDefault. Emits structured evaluation events at configured sample rate.")
+
+  }
+
+  Rel(managementUI, managementAPI, "Flag CRUD, targeting rule configuration, dry-run preview", "HTTPS / REST")
+
+  Rel(managementAPI, flagConfigStore, "Reads and writes flag definitions, targeting rules, metadata", "TCP / SQL")
+  Rel(managementAPI, auditLogStore, "Writes immutable audit record for every flag change", "TCP / SQL or HTTPS / S3")
+  Rel(managementAPI, flagStateCache, "Updates flag state on every write", "TCP / Redis")
+  Rel(managementAPI, sseService, "Notifies of flag state change for SSE broadcast", "Internal / pub-sub or HTTP")
+
+  Rel(flagStateCache, sseService, "Provides current flag state for new connection seeding and broadcast", "TCP / Redis")
+  Rel(sseService, applicationServices, "Streams flag state updates to connected SDK instances", "HTTPS / SSE")
+
+  Rel(applicationServices, sdk, "Calls flag evaluation at feature entry points", "In-process function call")
+  Rel(sdk, sseService, "Establishes SSE connection on startup; receives flag updates", "HTTPS / SSE")
+
+  Rel(managementAPI, observabilityPlatform, "Exports audit log records to SIEM", "HTTPS")
+  Rel(sdk, observabilityPlatform, "Emits structured evaluation events (sampled by flag type)", "HTTPS / Metrics")
+  Rel(sdk, analyticsPlatform, "Streams evaluation events for experiment result analysis", "HTTPS / Event stream")
