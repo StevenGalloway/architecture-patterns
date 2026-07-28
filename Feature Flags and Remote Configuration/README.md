@@ -127,6 +127,10 @@ Typed key-value store (boolean, string, number, JSON) with:
 - **Kill switch access**: on-call engineers must be able to disable any kill-switch flag without requiring a code deploy or elevated production access. Provision this access before incidents occur.
 - **SDK API keys**: manage SDK read-only API keys via a secrets manager. Rotate on schedule. SDK keys should have read-only access to flag state only.
 
+Unauthorized flag writes can disable active security controls or expose unreleased features. SDK key compromise reveals the full flag state including tenant entitlement structure. PII must never appear in targeting rules — the audit log is visible to all engineers with read access. Kill switch access must be pre-provisioned before incidents occur; emergency access requests take too long during outages.
+
+→ See [SECURITY.md](SECURITY.md)
+
 ---
 
 ## Observability Considerations
@@ -142,9 +146,73 @@ Typed key-value store (boolean, string, number, JSON) with:
 Emit a structured evaluation event for each flag check (sampled at 1% for high-volume flags):
 `{ flagKey, variant, ruleMatched, tenantId, userId (opaque), timestamp }`
 
+Flag evaluation is in-process, so latency observability focuses on SDK cache staleness and SSE propagation lag rather than evaluation call timing. Variant distribution monitoring is the primary signal for targeting rule misconfiguration — an unexpected shift > 20% indicates a rule is matching the wrong cohort. Stale flag count (flags whose age exceeds their type TTL) is a leading indicator of governance debt: each stale flag is a testing burden that compounds quarterly until cleaned up.
+
+→ See [OBSERVABILITY.md](OBSERVABILITY.md)
+
+---
+
+## Team Topology
+
+The platform team owns the flag infrastructure (management API, SSE push, SDK, audit log, schema registry) and publishes it as an X-as-a-service capability to stream-aligned teams. Stream-aligned teams own their own flags under enforced lifecycle contracts — flag creation is self-service, but TTL, owner assignment, and safe default are required fields. An experimentation enabling team provides statistical analysis capability for A/B test and model variant experiments without owning the flag platform itself.
+
+→ See [TEAM-TOPOLOGY.md](TEAM-TOPOLOGY.md)
+
+---
+
+## Cost Analysis
+
+The primary build vs. buy decision point is MAU volume and language footprint. LaunchDarkly is economical at small scale (fast time-to-value, multi-language SDKs included, experiment analysis built in); self-built wins at > 2M MAU or when data residency requirements prevent using a managed service.
+
+| Option | Small (10 SDK instances, 100K MAU) | Medium (50 instances, 1M MAU) | Large (200 instances, 10M MAU) |
+|--------|------------------------------------|-------------------------------|--------------------------------|
+| Self-built (Node.js + Redis + PostgreSQL) | $150/mo infra + 3 wk build | $400/mo + 0.1 FTE | $900/mo + 0.1 FTE |
+| LaunchDarkly | ~$400/mo | ~$2,500/mo | ~$8,000–15,000/mo |
+| Flagsmith (cloud) | ~$45/mo | ~$300/mo | ~$1,000/mo |
+
+Hidden costs frequently omitted from comparisons: flag debt cleanup (each stale flag is 2–4 hours of cleanup work), multi-language SDK maintenance (0.5–1 FTE/year for self-built), and experiment statistical analysis tooling ($0–$80K/year depending on approach).
+
+→ See [COST-ANALYSIS.md](COST-ANALYSIS.md)
+
+---
+
+## AI Integration
+
+Feature flag infrastructure maps directly onto the challenges of safe AI model deployment:
+
+- **Model version flags**: progressive rollout (1% → 10% → 100%) for new model versions using release flag type; same percentage rollout and sticky hashing as software features
+- **Shadow mode evaluation**: flag-gated shadow inference runs the new model against live traffic with responses discarded — offline quality assessment before any user sees the new model's output
+- **Kill switches for AI safety**: ops-type kill switch that instantly reverts to the previous model or rule-based fallback when a model produces harmful or degraded output; accessible to non-engineers (ML safety team, legal) without a code deploy
+- **Model variant experiments**: experiment flags A/B test between model versions with statistical analysis on quality metrics (accuracy, latency, user rating) rather than engagement metrics
+- **Remote configuration for inference parameters**: temperature, top-p, max_tokens, and system prompt version managed as typed remote configuration — runtime tuning without redeployment, full audit trail of every parameter change
+
+→ See [AI-INTEGRATION.md](AI-INTEGRATION.md)
+
+---
+
+## Platform Engineering
+
+The flag platform is a paved road: a team that creates a feature flag gets lifecycle enforcement, self-service targeting rules, an immutable audit log, kill switch infrastructure, and evaluation analytics without building any of this themselves. The test of platform success is not flag adoption rate — it is whether teams have stopped building dirt roads (environment variables for A/B test control, per-service database config tables, deployment-based canary splits). Flag creation must be self-service in under 10 minutes; any flag creation that requires a platform team ticket is a platform team failure.
+
+→ See [PLATFORM-ENGINEERING.md](PLATFORM-ENGINEERING.md)
+
+---
+
+## Business Case
+
+Feature flags transform bad releases from major incidents (30–60 minute full rollbacks, wide user impact) into minor incidents (flag disabled in seconds, 1% user exposure); the break-even on investment is a single prevented major incident.
+
+→ See [EXECUTIVE-BRIEF.md](EXECUTIVE-BRIEF.md)
+
 ---
 
 ## Diagrams
+
+### C4 Model
+- [`diagrams/c4-context.mmd`](diagrams/c4-context.mmd) — C4 system context: feature engineers, product managers, on-call engineers, application services, identity provider, observability, analytics, secrets manager
+- [`diagrams/c4-container.mmd`](diagrams/c4-container.mmd) — C4 container: management API, flag config store, audit log store, SSE push service, flag state cache, in-process SDK, management UI
+
+### Sequence and Lifecycle Diagrams
 - [`diagrams/01-context.mmd`](diagrams/01-context.mmd) — System context: management plane, SSE sync, in-process SDK instances, observability
 - [`diagrams/02-flag-evaluation-sequence.mmd`](diagrams/02-flag-evaluation-sequence.mmd) — Startup seed, local evaluation, background SSE sync, kill switch flow
 - [`diagrams/03-flag-lifecycle-and-ops.mmd`](diagrams/03-flag-lifecycle-and-ops.mmd) — Release flag lifecycle and kill switch operational path
