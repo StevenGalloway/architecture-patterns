@@ -1,0 +1,24 @@
+C4Context
+  title System Context — Idempotent Consumer Pattern
+
+  Person(producer, "Message Producer", "Service that publishes messages to the broker. Assigns a stable message_id to each message. May publish duplicates due to retries or at-least-once delivery semantics.")
+  Person(opsEngineer, "Ops Engineer", "Monitors DLQ depth and message age. Triggers replay operations. Remediates poison messages. Reviews dedup store health.")
+
+  System(idempotentConsumer, "Idempotent Consumer System", "Consumes messages from the broker with deduplication. Ensures each business operation executes exactly once regardless of how many times the same message is delivered.")
+
+  System_Ext(messageBroker, "Message Broker", "Delivers messages at-least-once. Redelivers on consumer timeout, restart, or ack failure. (RabbitMQ, Kafka, AWS SQS)")
+  System_Ext(dedupStore, "Deduplication Store", "Tracks processed message IDs with TTL. Provides atomic check-and-set semantics. (Redis with SETNX + TTL)")
+  System_Ext(sideEffectSystems, "External Side Effect Systems", "Business operations triggered by the consumer: payment gateway, email service, order fulfillment, invoice system. Must not be called twice for the same message.")
+  System_Ext(deadLetterQueue, "Dead Letter Queue", "Receives messages that fail processing after the maximum retry limit. Storage for poison messages requiring manual investigation and remediation.")
+  System_Ext(observabilityPlatform, "Observability Platform", "Receives structured processing logs, dedup check latency metrics, duplicate detection counts, and DLQ depth alerts from the consumer system.")
+
+  Rel(producer, messageBroker, "Publishes messages with stable message_id", "AMQP / Kafka protocol")
+  Rel(messageBroker, idempotentConsumer, "Delivers messages at-least-once", "AMQP / Kafka consumer group")
+  Rel(idempotentConsumer, dedupStore, "Atomic check-and-set before processing (SETNX + TTL)", "Redis protocol, < 1ms")
+  Rel(idempotentConsumer, sideEffectSystems, "Executes business operation only for new messages", "HTTPS / internal API")
+  Rel(idempotentConsumer, deadLetterQueue, "Routes poison messages after max retries", "AMQP dead-letter exchange")
+  Rel(idempotentConsumer, observabilityPlatform, "Structured processing logs, metrics, traces", "OTLP / JSON")
+  Rel(opsEngineer, deadLetterQueue, "Monitors depth, reads poison messages, triggers remediation", "Management UI / CLI")
+  Rel(opsEngineer, idempotentConsumer, "Triggers replay operations with elevated credentials", "Internal ops API")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
