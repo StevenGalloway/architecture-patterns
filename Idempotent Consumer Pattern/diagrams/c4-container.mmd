@@ -1,0 +1,50 @@
+C4Container
+  title Container Diagram — Idempotent Consumer System
+
+  Person(producer, "Message Producer", "Publishes messages with stable message_id")
+  Person(opsEngineer, "Ops Engineer", "Monitors DLQ, triggers replays")
+
+  System_Ext(messageBroker, "Message Broker", "RabbitMQ / Kafka — at-least-once delivery")
+  System_Ext(redisDedupStore, "Redis Dedup Store", "Shared platform Redis cluster with team-namespaced keyspaces")
+  System_Ext(sideEffectSystems, "External Side Effect Systems", "Payment gateway, email service, order fulfillment")
+  System_Ext(observabilityPlatform, "Observability Platform", "Metrics, logs, traces — Datadog / Grafana / OTLP")
+
+  System_Boundary(consumerSystem, "Idempotent Consumer System") {
+
+    Container(messageConsumer, "Message Consumer", ".NET 8 / C#", "Reads messages from the broker queue. Orchestrates the dedup check, business operation, and ack sequence. Stateless; runs as multiple scaled-out instances.")
+
+    Container(dedupCheck, "Dedup Check", "Platform SDK (NuGet)", "Performs atomic SETNX check against Redis before business operation. Returns: new (proceed) or duplicate (skip). Emits dedup_check.latency metric on every call. Configured with TTL and fail-closed behavior via consumer manifest.")
+
+    Container(businessOpHandler, "Business Operation Handler", "Domain logic (.NET 8)", "Executes the domain-specific side effect: charge card, send email, update record, fulfill order. Called only when dedup check returns 'new'. Owns idempotency key selection and TTL sizing for its domain.")
+
+    Container(retryController, "Retry Controller", "Platform SDK", "Manages retry backoff policy (exponential with jitter). Tracks retry count per message. Routes to DLQ router after max retries exceeded. Emits retry count as a metric per message.")
+
+    Container(dlqRouter, "DLQ Router", "Platform SDK", "Routes poison messages to the dead-letter exchange after max retries. Tags DLQ message with: original queue, retry count, last error, consumer name, timestamp. Emits dlq.depth metric.")
+
+    Container(inboxTable, "Inbox Table (optional)", "PostgreSQL", "Transactional alternative to Redis for high-stakes consumers (payments, financial). Dedup mark and business operation commit atomically in the same database transaction. Eliminates partial processing window risk.")
+
+    Container(consumerMonitoring, "Consumer Monitoring", "Health check + metrics emitter", "Exposes /health endpoint for load balancer health checks. Emits consumer-level metrics: processing rate, duplicate rate, lag, Redis error rate. Registers with observability platform on startup.")
+
+  }
+
+  Rel(producer, messageBroker, "Publishes with stable message_id", "AMQP / Kafka")
+  Rel(messageBroker, messageConsumer, "Delivers messages at-least-once", "AMQP consumer / Kafka consumer group")
+
+  Rel(messageConsumer, dedupCheck, "Check message_id before processing", "In-process SDK call")
+  Rel(dedupCheck, redisDedupStore, "SETNX processed:{namespace}:{message_id} with TTL", "Redis protocol, < 1ms")
+
+  Rel(dedupCheck, businessOpHandler, "Calls only when dedup result is 'new'", "In-process")
+  Rel(businessOpHandler, sideEffectSystems, "Executes business operation", "HTTPS / internal gRPC")
+  Rel(businessOpHandler, inboxTable, "Atomic dedup mark + operation commit (financial consumers)", "PostgreSQL, same transaction")
+
+  Rel(messageConsumer, retryController, "On processing failure, apply retry policy", "In-process")
+  Rel(retryController, dlqRouter, "After max retries exceeded", "In-process")
+  Rel(dlqRouter, messageBroker, "Routes to dead-letter exchange", "AMQP dead-letter routing key")
+
+  Rel(consumerMonitoring, observabilityPlatform, "Health status, metrics, structured logs, traces", "OTLP / stdout JSON")
+  Rel(messageConsumer, consumerMonitoring, "Emits processing events", "In-process")
+  Rel(dedupCheck, consumerMonitoring, "Emits dedup_check.latency, duplicates.detected", "In-process")
+
+  Rel(opsEngineer, messageBroker, "Reads DLQ, triggers replay via management API", "AMQP management / Kafka admin")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
